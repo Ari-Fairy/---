@@ -1,0 +1,421 @@
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Stamp, Sparkles, RefreshCw, Send, CheckCircle, Gift, Heart, Code2 } from 'lucide-react';
+import { PostcardStamp } from '../types';
+import { playSealBreakSound, playStampSound } from '../utils/audioSynth';
+import confetti from 'canvas-confetti';
+
+interface PostcardEnvelopeProps {
+  stamps: PostcardStamp[];
+  onUnlockStamp: (id: string) => void;
+}
+
+export function PostcardEnvelope({ stamps, onUnlockStamp }: PostcardEnvelopeProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isFlipped, setIsFlipped] = useState(false);
+  const [selectedStamp, setSelectedStamp] = useState<PostcardStamp | null>(null);
+
+  const handleOpenEnvelope = () => {
+    if (!isOpen) {
+      playSealBreakSound();
+      confetti({
+        particleCount: 50,
+        spread: 60,
+        origin: { y: 0.6 },
+        colors: ['#b45309', '#e11d48', '#f59e0b', '#10b981'],
+      });
+      setIsOpen(true);
+      // Automatically unlock commemorative envelope stamp upon breaking the seal
+      onUnlockStamp('stamp-envelope');
+    }
+  };
+
+  const handleStampClick = (stamp: PostcardStamp) => {
+    playStampSound();
+    setSelectedStamp(stamp);
+  };
+
+  return (
+    <section id="postcard" className="pt-8 pb-16 px-4 sm:px-6 relative overflow-hidden">
+      {/* Background soft ornamental elements */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[680px] h-[680px] bg-amber-200/20 rounded-full blur-3xl pointer-events-none -z-10" />
+
+      <div className="max-w-4xl mx-auto text-center mb-8">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-100/80 border border-amber-300/80 text-amber-900 text-xs font-semibold uppercase tracking-wider mb-3">
+          <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+          Памятный сувенир участнику МФМ 2026
+        </div>
+        <h1 className="font-serif-display text-4xl sm:text-5xl lg:text-6xl text-stone-900 font-bold tracking-tight">
+          Привет из России!
+        </h1>
+        <p className="mt-3 text-stone-600 text-base sm:text-lg max-w-2xl mx-auto font-sans-ui">
+          Интерактивная открытка от Арины — студентки-программиста. Коснитесь сургучной печати, чтобы открыть конверт и заглянуть внутрь!
+        </p>
+      </div>
+
+      <div className="max-w-3xl mx-auto">
+        {!isOpen ? (
+          /* Closed Vintage Envelope with Wax Seal */
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="relative cursor-pointer group"
+            onClick={handleOpenEnvelope}
+          >
+            <div className="bg-[#e8dec8] p-6 sm:p-10 rounded-2xl shadow-xl border border-stone-300/90 relative overflow-hidden transition-all duration-300 group-hover:shadow-2xl group-hover:-translate-y-1">
+              
+              {/* Airmail decorative striped border */}
+              <div className="absolute inset-x-0 top-0 h-3.5 bg-[repeating-linear-gradient(45deg,#b91c1c,#b91c1c_14px,#fafaf9_14px,#fafaf9_24px,#1d4ed8_24px,#1d4ed8_38px,#fafaf9_38px,#fafaf9_48px)] opacity-85" />
+              <div className="absolute inset-x-0 bottom-0 h-3.5 bg-[repeating-linear-gradient(45deg,#b91c1c,#b91c1c_14px,#fafaf9_14px,#fafaf9_24px,#1d4ed8_24px,#1d4ed8_38px,#fafaf9_38px,#fafaf9_48px)] opacity-85" />
+
+              {/* Postal Marks */}
+              <div className="flex justify-between items-start pt-4">
+                <div className="text-left space-y-1">
+                  <span className="inline-block font-sans-ui text-[11px] font-bold tracking-widest text-stone-500 uppercase">
+                    АВИАПОЧТА / PAR AVION
+                  </span>
+                  <div className="text-xs font-medium text-stone-700 font-sans-ui">
+                    Отправитель: <span className="font-semibold text-stone-900">Арина (Программист, г. Реутов)</span>
+                    <br />
+                    Место встречи: <span className="font-semibold text-rose-700">МФМ 2026 • Россия</span>
+                  </div>
+                </div>
+
+                {/* Commemorative Postmark */}
+                <div className="w-20 h-20 rounded-full border-2 border-dashed border-red-800/60 p-1 flex flex-col items-center justify-center text-red-900/80 rotate-12 select-none">
+                  <span className="text-[9px] font-bold tracking-widest">МФМ 2026</span>
+                  <span className="text-[12px] font-extrabold tracking-tighter">РОССИЯ</span>
+                  <span className="text-[8px] tracking-wider">ФЕСТИВАЛЬ</span>
+                </div>
+              </div>
+
+              {/* Center Wax Seal */}
+              <div className="my-10 sm:my-14 flex flex-col items-center justify-center">
+                <motion.div
+                  whileHover={{ scale: 1.08 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="w-24 h-24 rounded-full bg-gradient-to-br from-red-700 via-rose-800 to-amber-900 flex flex-col items-center justify-center text-amber-100 shadow-xl border-4 border-amber-600/60 relative cursor-pointer"
+                >
+                  <Gift className="w-8 h-8 text-amber-200" />
+                  <span className="text-[10px] font-bold tracking-wider mt-1 text-amber-100">
+                    ОТКРЫТЬ
+                  </span>
+                  {/* Outer pulse */}
+                  <span className="absolute -inset-2 rounded-full border-2 border-red-600/40 animate-ping pointer-events-none" />
+                </motion.div>
+                <p className="mt-4 text-xs font-semibold text-stone-600 uppercase tracking-wider flex items-center gap-1.5 font-sans-ui">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                  Нажмите, чтобы сломать печать и достать открытку
+                </p>
+              </div>
+
+              {/* Address lines */}
+              <div className="border-t border-stone-300/70 pt-4 flex flex-col sm:flex-row justify-between items-end gap-2 text-stone-500 text-xs">
+                <div className="text-left font-handwriting text-2xl text-stone-700">
+                  Дорогому участнику и новому другу!
+                </div>
+                <div className="font-sans-ui text-[11px] uppercase tracking-wider text-amber-900/80 font-semibold">
+                  Цифровой сувенир ручной работы
+                </div>
+              </div>
+
+            </div>
+          </motion.div>
+        ) : (
+          /* Opened Postcard Container with 3D Flip */
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="space-y-4"
+          >
+            {/* Control Bar: Flip & Close */}
+            <div className="flex items-center justify-between px-2">
+              <button
+                id="btn-flip-card"
+                onClick={() => setIsFlipped(!isFlipped)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-semibold shadow-sm transition-all"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isFlipped ? 'rotate-180' : ''} transition-transform duration-300`} />
+                <span>{isFlipped ? 'Перевернуть на лицевую сторону' : 'Перевернуть открытку (Коллекция марок)'}</span>
+              </button>
+
+              <button
+                id="btn-close-envelope"
+                onClick={() => setIsFlipped(false) || setIsOpen(false)}
+                className="text-xs text-stone-500 hover:text-stone-800 underline transition-colors"
+              >
+                Закрыть обратно в конверт
+              </button>
+            </div>
+
+            {/* Postcard Body */}
+            <div className="relative [perspective:1000px]">
+              <motion.div
+                animate={{ rotateY: isFlipped ? 180 : 0 }}
+                transition={{ duration: 0.6, ease: 'easeInOut' }}
+                className="relative [transform-style:preserve-3d]"
+              >
+                
+                {/* FRONT SIDE */}
+                <div
+                  className={`w-full bg-[#fcf9f2] rounded-2xl shadow-xl border-2 border-stone-200/90 p-6 sm:p-8 [backface-visibility:hidden] transition-opacity duration-300 ${
+                    isFlipped ? 'pointer-events-none absolute inset-0 opacity-0 overflow-hidden' : 'relative opacity-100'
+                  }`}
+                >
+                  {/* Decorative corner borders */}
+                  <div className="flex justify-between items-start pb-4 border-b border-stone-200">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-900 shadow-xs">
+                        <Code2 className="w-6 h-6 text-amber-800" />
+                      </div>
+                      <div className="text-left">
+                        <h2 className="font-serif-display font-bold text-xl text-stone-900">
+                          Сувенир от программиста Арины
+                        </h2>
+                        <p className="text-xs text-stone-500 font-sans-ui">
+                          Международный молодёжный фестиваль • МФМ 2026
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Stamp in upper right corner */}
+                    <div
+                      onClick={() => handleStampClick(stamps[0])}
+                      className="cursor-pointer group relative p-1.5 bg-amber-50 rounded-lg border-2 border-dashed border-amber-600/70 hover:scale-105 transition-transform"
+                      title="Кликни на марку!"
+                    >
+                      <div className="w-16 h-20 rounded bg-gradient-to-br from-amber-700 via-rose-700 to-red-800 text-white p-1.5 flex flex-col justify-between items-center text-center shadow-xs">
+                        <span className="text-[8px] font-bold tracking-widest uppercase">РОССИЯ</span>
+                        <Stamp className="w-6 h-6 text-amber-200" />
+                        <span className="text-[8px] font-semibold">МФМ 2026</span>
+                      </div>
+                      <span className="absolute -bottom-2 -right-1 text-[10px] bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                        ★
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Main Grid: Postcard Artwork & Handwritten Letter */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6 my-6 text-left items-stretch">
+                    
+                    {/* Visual Art Box */}
+                    <div className="md:col-span-5 rounded-xl bg-gradient-to-b from-stone-800 via-stone-900 to-amber-950 p-5 text-white flex flex-col justify-between relative overflow-hidden shadow-inner">
+                      {/* Artistic overlay badges */}
+                      <div className="space-y-2 z-10">
+                        <span className="inline-block px-2.5 py-1 rounded-md bg-white/15 backdrop-blur-xs text-[10px] font-semibold uppercase tracking-wider text-amber-200">
+                          🇷🇺 Россия • Культура и Душа
+                        </span>
+                        <h3 className="font-serif-display text-2xl font-bold leading-tight text-stone-100">
+                          Страна великих просторов, тёплых сердец и глубоких историй
+                        </h3>
+                      </div>
+
+                      {/* Symbolic motif */}
+                      <div className="my-6 flex justify-center items-center py-4">
+                        <div className="relative flex items-center justify-center">
+                          <div className="w-24 h-24 rounded-full border border-amber-400/30 flex items-center justify-center">
+                            <span className="text-4xl select-none">🫖</span>
+                          </div>
+                          <span className="absolute text-xl -top-2 -right-2 select-none">❄️</span>
+                          <span className="absolute text-xl -bottom-1 -left-2 select-none">🪆</span>
+                        </div>
+                      </div>
+
+                      <div className="z-10 bg-black/40 backdrop-blur-xs p-3 rounded-lg border border-white/10 text-xs text-stone-300">
+                        <p className="italic font-serif-display text-sm text-amber-200">
+                          «В России гость — всегда праздник, а чай из самовара согревает в любую стужу.»
+                        </p>
+                      </div>
+
+                      {/* Subtle pattern */}
+                      <div className="absolute inset-0 bg-[radial-gradient(#f59e0b_1px,transparent_1px)] [background-size:16px_16px] opacity-10 pointer-events-none" />
+                    </div>
+
+                    {/* Handwritten Letter from Arina */}
+                    <div className="md:col-span-7 flex flex-col justify-between bg-[#fffefc] rounded-xl p-5 border border-stone-200/80 shadow-xs relative">
+                      
+                      {/* Lined paper effect */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between text-xs text-stone-500 font-sans-ui pb-2 border-b border-dashed border-stone-200">
+                          <span>Кому: Самому классному участнику МФМ</span>
+                          <span>От: Арины</span>
+                        </div>
+
+                        <div className="font-handwriting text-2xl sm:text-3xl text-stone-800 leading-relaxed space-y-3">
+                          <p>
+                            Здравствуйте, дорогой друг!
+                          </p>
+                          <p>
+                            Я учусь на программиста и так как у меня не было достаточно денег я решила а почему не сделать что-то своими руками — этот интерактивный сайт-открытку. Надеюсь тебе понравится!
+                          </p>
+                          <p>
+                            Здесь я делюсь частичкой России, моего родного города и моими увлечениями.
+                          </p>
+                          <p className="text-rose-900 font-bold">
+                            Листай дальше, тебя ждут интерактивный самовар с уникальными вкусами, секрет матрёшки, викторина и обмен увлечениями!
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Postcard signature */}
+                      <div className="mt-6 pt-3 border-t border-stone-200 flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-stone-600 text-xs font-sans-ui">
+                          <Heart className="w-4 h-4 text-rose-600 fill-rose-600" />
+                          <span>С теплом из России, Арина (г. Реутов)</span>
+                        </div>
+                        <span className="font-handwriting text-xl text-stone-700 font-bold">
+                          Arina • 2026
+                        </span>
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                  {/* Postcard bottom bar */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-stone-200 text-xs text-stone-500 font-sans-ui">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                      <span>Интерактивный сувенир активен</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <a href="#russia" className="text-amber-800 font-semibold hover:underline flex items-center gap-1">
+                        Исследовать Россию →
+                      </a>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* BACK SIDE (Stamps Passport) */}
+                <div
+                  className={`w-full bg-[#fcf9f2] rounded-2xl shadow-xl border-2 border-stone-200/90 p-6 sm:p-8 [transform:rotateY(180deg)] [backface-visibility:hidden] transition-opacity duration-300 ${
+                    !isFlipped ? 'pointer-events-none absolute inset-0 opacity-0 overflow-hidden' : 'relative opacity-100'
+                  }`}
+                >
+                  <div className="flex items-center justify-between pb-4 border-b border-stone-200">
+                    <div>
+                      <h3 className="font-serif-display font-bold text-2xl text-stone-900">
+                        Паспорт коллекционера марок МФМ 2026
+                      </h3>
+                      <p className="text-xs text-stone-500 font-sans-ui">
+                        Нажимайте на марки, чтобы узнать скрытые культурные истории и собрать всю серию!
+                      </p>
+                    </div>
+                    <div className="px-3 py-1 bg-amber-100 text-amber-900 rounded-full text-xs font-bold border border-amber-300">
+                      Открыто: {stamps.filter((s) => s.unlocked).length}/{stamps.length}
+                    </div>
+                  </div>
+
+                  {/* Stamps Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 my-6">
+                    {stamps.map((stamp) => (
+                      <motion.div
+                        key={stamp.id}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleStampClick(stamp)}
+                        className={`cursor-pointer rounded-xl p-3 border-2 border-dashed transition-all flex flex-col items-center text-center justify-between relative min-h-[140px] ${
+                          stamp.unlocked
+                            ? 'bg-amber-50/60 border-amber-600/70 shadow-xs'
+                            : 'bg-stone-100/60 border-stone-300 opacity-60 hover:opacity-100'
+                        }`}
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-600 to-rose-600 flex items-center justify-center text-white shadow-xs mb-2">
+                          <Stamp className="w-5 h-5" />
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-xs font-bold text-stone-900 block leading-tight font-sans-ui">
+                            {stamp.name}
+                          </span>
+                          <span className="text-[10px] text-stone-500 block">
+                            {stamp.subtitle}
+                          </span>
+                        </div>
+                        <span
+                          className={`mt-2 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                            stamp.unlocked
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-stone-200 text-stone-600'
+                          }`}
+                        >
+                          {stamp.unlocked ? 'В коллекции' : 'Нажмите'}
+                        </span>
+                      </motion.div>
+                    ))}
+                  </div>
+
+                  {/* Selected stamp info & quest hint */}
+                  {selectedStamp && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`p-4 rounded-xl border text-left font-sans-ui ${
+                        selectedStamp.unlocked
+                          ? 'bg-amber-100/70 border-amber-300 text-stone-800'
+                          : 'bg-stone-100 border-stone-300 text-stone-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2 font-bold text-sm text-stone-900">
+                          {selectedStamp.unlocked ? (
+                            <CheckCircle className="w-4 h-4 text-emerald-600" />
+                          ) : (
+                            <span className="text-amber-700">🔒</span>
+                          )}
+                          <span>
+                            Марка «{selectedStamp.name}»: {selectedStamp.subtitle}
+                          </span>
+                        </div>
+                        <span
+                          className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                            selectedStamp.unlocked
+                              ? 'bg-emerald-200 text-emerald-900'
+                              : 'bg-amber-200 text-amber-900'
+                          }`}
+                        >
+                          {selectedStamp.unlocked ? 'Получена в коллекцию' : 'Задание не выполнено'}
+                        </span>
+                      </div>
+
+                      {selectedStamp.unlocked ? (
+                        <p className="mt-2 text-xs text-stone-700 leading-relaxed">
+                          {selectedStamp.description}
+                        </p>
+                      ) : (
+                        <div className="mt-2 space-y-2">
+                          <p className="text-xs text-stone-600">
+                            <strong>Как получить:</strong> {selectedStamp.questHint}
+                          </p>
+                          <a
+                            href={selectedStamp.targetSection}
+                            onClick={() => setIsFlipped(false)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-stone-900 text-white text-xs font-semibold hover:bg-stone-800 transition-colors shadow-xs"
+                          >
+                            <span>Перейти к заданию</span>
+                            <span>→</span>
+                          </a>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+
+                  <div className="pt-4 border-t border-stone-200 text-center">
+                    <button
+                      onClick={() => setIsFlipped(false)}
+                      className="text-xs font-semibold text-amber-800 hover:underline inline-flex items-center gap-1 font-sans-ui"
+                    >
+                      ← Вернуться к письму открытки
+                    </button>
+                  </div>
+                </div>
+
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </div>
+    </section>
+  );
+}

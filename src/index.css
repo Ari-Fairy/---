@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .font-handwriting {
+    font-family: 'Caveat', cursive;
+  }
+  .font-serif-display {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+  }
+  .font-sans-ui {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  }
+}
+
+/* Custom subtle scrollbar and postcard styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.03);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(180, 83, 9, 0.25);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(180, 83, 9, 0.45);
+}
