@@ -1,8 +1,19 @@
-// Background audio manager and procedural sound effect synthesizer
+// Centralized Audio Manager & Sound Synthesizer
 
 let audioCtx: AudioContext | null = null;
 let bgmAudioElement: HTMLAudioElement | null = null;
 let stateListeners: Array<(playing: boolean) => void> = [];
+let gestureUnlockRegistered = false;
+
+// By default, music is ALWAYS ON unless the user explicitly muted it
+let isUserMuted = false;
+if (typeof window !== 'undefined') {
+  try {
+    isUserMuted = localStorage.getItem('mfm_bgm_muted') === 'true';
+  } catch {
+    isUserMuted = false;
+  }
+}
 
 export function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
@@ -25,7 +36,6 @@ function getBgmAudio(): HTMLAudioElement | null {
       bgmAudioElement = new Audio('/audio/musicbox.wav');
       bgmAudioElement.id = 'bgm-musicbox';
       bgmAudioElement.loop = true;
-      bgmAudioElement.volume = 0.35;
       bgmAudioElement.preload = 'auto';
       bgmAudioElement.setAttribute('playsinline', 'true');
       document.body.appendChild(bgmAudioElement);
@@ -34,25 +44,62 @@ function getBgmAudio(): HTMLAudioElement | null {
   return bgmAudioElement;
 }
 
-function isUserExplicitlyMuted(): boolean {
-  try {
-    return localStorage.getItem('mfm_bgm_user_muted') === 'true';
-  } catch {
-    return false;
+function playBgm() {
+  if (isUserMuted) return;
+  const audio = getBgmAudio();
+  if (!audio) return;
+
+  audio.volume = 0.35;
+  const p = audio.play();
+  if (p !== undefined) {
+    p.catch(() => {
+      // Browser autoplay policy held audio - register one-touch unblock
+      setupGestureUnlock();
+    });
   }
 }
 
-export function getIsBgmPlaying(): boolean {
-  if (isUserExplicitlyMuted()) return false;
+function pauseBgm() {
   const audio = getBgmAudio();
   if (audio) {
-    return !audio.paused;
+    audio.pause();
   }
-  return true;
 }
 
-export function isAudioActuallyRunning(): boolean {
-  return getIsBgmPlaying();
+function setupGestureUnlock() {
+  if (gestureUnlockRegistered || typeof window === 'undefined') return;
+  gestureUnlockRegistered = true;
+
+  const onUserTouch = () => {
+    if (!isUserMuted) {
+      const audio = getBgmAudio();
+      if (audio && audio.paused) {
+        audio.volume = 0.35;
+        const p = audio.play();
+        if (p !== undefined) {
+          p.then(() => {
+            cleanup();
+          }).catch(() => {});
+        }
+      } else {
+        cleanup();
+      }
+    }
+  };
+
+  const cleanup = () => {
+    events.forEach((evt) => {
+      window.removeEventListener(evt, onUserTouch);
+      document.removeEventListener(evt, onUserTouch);
+    });
+    gestureUnlockRegistered = false;
+  };
+
+  const events = ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown'];
+  events.forEach((evt) => {
+    window.addEventListener(evt, onUserTouch, { passive: true });
+    document.addEventListener(evt, onUserTouch, { passive: true });
+  });
 }
 
 function notifyState(playing: boolean) {
@@ -65,7 +112,7 @@ function notifyState(playing: boolean) {
 
 export function subscribeBgmState(listener: (playing: boolean) => void): () => void {
   stateListeners.push(listener);
-  listener(getIsBgmPlaying());
+  listener(!isUserMuted);
   return () => {
     stateListeners = stateListeners.filter((l) => l !== listener);
   };
@@ -75,49 +122,50 @@ export function subscribeAudioActiveState(listener: (active: boolean) => void): 
   return subscribeBgmState(listener);
 }
 
+export function isAudioActuallyRunning(): boolean {
+  return !isUserMuted;
+}
+
+export function getIsBgmPlaying(): boolean {
+  return !isUserMuted;
+}
+
 export function ensurePlaybackLoop(): void {
   startAmbientBgm();
 }
 
 export function startAmbientBgm(): boolean {
+  isUserMuted = false;
   try {
-    localStorage.removeItem('mfm_bgm_user_muted');
+    localStorage.removeItem('mfm_bgm_muted');
   } catch {}
 
-  const audio = getBgmAudio();
-  if (audio) {
-    audio.play().catch(() => {});
-  }
+  playBgm();
   notifyState(true);
   return true;
 }
 
 export function stopAmbientBgm(): void {
+  isUserMuted = true;
   try {
-    localStorage.setItem('mfm_bgm_user_muted', 'true');
+    localStorage.setItem('mfm_bgm_muted', 'true');
   } catch {}
 
-  const audio = getBgmAudio();
-  if (audio) {
-    audio.pause();
-  }
+  pauseBgm();
   notifyState(false);
 }
 
 export function toggleAmbientBgm(): boolean {
-  const audio = getBgmAudio();
-  const isPlaying = audio ? !audio.paused : !isUserExplicitlyMuted();
-
-  if (isPlaying) {
-    stopAmbientBgm();
-    return false;
-  } else {
+  if (isUserMuted) {
     startAmbientBgm();
     return true;
+  } else {
+    stopAmbientBgm();
+    return false;
   }
 }
 
-// Procedural Interactive Sound Effects (Instantaneous, self-contained Web Audio)
+// Procedural Interactive Sound Effects
 export function playSealBreakSound() {
   try {
     const ctx = getAudioContext();
@@ -217,48 +265,27 @@ export function playVictorySound() {
   } catch {}
 }
 
-// Global browser event hooks: ensure audio element syncs with UI state
+// Initial auto-start and tab visibility management
 if (typeof window !== 'undefined') {
-  const syncWithAudio = () => {
-    const audio = getBgmAudio();
-    if (audio) {
-      audio.addEventListener('play', () => notifyState(true));
-      audio.addEventListener('pause', () => notifyState(false));
-
-      if (!isUserExplicitlyMuted()) {
-        audio.play().then(() => notifyState(true)).catch(() => {});
-      }
+  const initAudio = () => {
+    if (!isUserMuted) {
+      playBgm();
     }
   };
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', syncWithAudio);
+  if (document.readyState === 'complete') {
+    initAudio();
   } else {
-    syncWithAudio();
+    window.addEventListener('load', initAudio, { once: true });
+    window.addEventListener('DOMContentLoaded', initAudio, { once: true });
   }
 
-  // Any user touch, swipe, or click on the screen will trigger playback if browser held it
-  const unlockEvents = ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown', 'scroll'];
-  const handleInteraction = () => {
-    if (!isUserExplicitlyMuted()) {
-      const audio = getBgmAudio();
-      if (audio && audio.paused) {
-        audio.play().then(() => notifyState(true)).catch(() => {});
-      }
-    }
-  };
-
-  unlockEvents.forEach((evt) => {
-    window.addEventListener(evt, handleInteraction, { capture: true, passive: true });
-    document.addEventListener(evt, handleInteraction, { capture: true, passive: true });
-  });
-
-  // Resume when returning to tab
+  // Resume when returning to the tab
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && !isUserExplicitlyMuted()) {
+    if (document.visibilityState === 'visible' && !isUserMuted) {
       const audio = getBgmAudio();
       if (audio && audio.paused) {
-        audio.play().then(() => notifyState(true)).catch(() => {});
+        audio.play().catch(() => {});
       }
     }
   });

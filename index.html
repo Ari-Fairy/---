@@ -96,40 +96,8 @@
     </script>
     <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async defer></script>
 
-    <!-- Background Musicbox Audio Element with Autoplay -->
-    <audio id="bgm-musicbox" src="/audio/musicbox.wav" loop autoplay playsinline preload="auto"></audio>
-    <script type="text/javascript">
-      (function() {
-        var audio = document.getElementById('bgm-musicbox');
-        if (!audio) return;
-        audio.volume = 0.35;
-        var isMuted = false;
-        try {
-          isMuted = localStorage.getItem('mfm_bgm_user_muted') === 'true';
-        } catch(e) {}
-
-        if (!isMuted) {
-          var p = audio.play();
-          if (p !== undefined) {
-            p.catch(function() {
-              var unlock = function() {
-                var muted = false;
-                try { muted = localStorage.getItem('mfm_bgm_user_muted') === 'true'; } catch(e) {}
-                if (!muted && audio.paused) {
-                  audio.play().catch(function() {});
-                }
-              };
-              ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown', 'scroll'].forEach(function(evt) {
-                window.addEventListener(evt, unlock, { once: true, passive: true });
-                document.addEventListener(evt, unlock, { once: true, passive: true });
-              });
-            });
-          }
-        } else {
-          audio.pause();
-        }
-      })();
-    </script>
+    <!-- Background Musicbox Audio Element -->
+    <audio id="bgm-musicbox" src="/audio/musicbox.wav" loop playsinline preload="auto"></audio>
 
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
