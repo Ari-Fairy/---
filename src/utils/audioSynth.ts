@@ -1,19 +1,26 @@
 // Web Audio API procedural sound synthesizer (100% self-contained, no external assets needed)
 
 let audioCtx: AudioContext | null = null;
-let bgmInterval: any = null;
+let bgmInterval: ReturnType<typeof setInterval> | null = null;
 let isBgmPlaying = false;
+let isBgmDesired = true;
+
+// Check user stored preference (default: enabled)
+if (typeof window !== 'undefined') {
+  try {
+    isBgmDesired = localStorage.getItem('mfm_bgm_muted') !== 'true';
+  } catch {
+    isBgmDesired = true;
+  }
+}
 
 function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   if (!audioCtx) {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (AudioContextClass) {
       audioCtx = new AudioContextClass();
     }
-  }
-  if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume();
   }
   return audioCtx;
 }
@@ -23,6 +30,9 @@ export function playSealBreakSound() {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
     const now = ctx.currentTime;
 
     // Subtle paper crinkle / chime
@@ -41,7 +51,7 @@ export function playSealBreakSound() {
 
     osc.start(now);
     osc.stop(now + 0.35);
-  } catch (e) {
+  } catch {
     // Ignore audio restrictions
   }
 }
@@ -51,6 +61,9 @@ export function playStampSound() {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
     const now = ctx.currentTime;
 
     const osc = ctx.createOscillator();
@@ -68,7 +81,7 @@ export function playStampSound() {
 
     osc.start(now);
     osc.stop(now + 0.2);
-  } catch (e) {
+  } catch {
     // Ignore
   }
 }
@@ -78,6 +91,9 @@ export function playTeaSound() {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
     const now = ctx.currentTime;
 
     [440, 554, 659, 880].forEach((freq, i) => {
@@ -96,7 +112,7 @@ export function playTeaSound() {
       osc.start(now + i * 0.08);
       osc.stop(now + i * 0.08 + 0.25);
     });
-  } catch (e) {
+  } catch {
     // Ignore
   }
 }
@@ -106,6 +122,9 @@ export function playVictorySound() {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
     const now = ctx.currentTime;
 
     const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
@@ -125,17 +144,28 @@ export function playVictorySound() {
       osc.start(now + idx * 0.12);
       osc.stop(now + idx * 0.12 + 0.4);
     });
-  } catch (e) {
+  } catch {
     // Ignore
   }
 }
 
-// Gentle ambient music box loop
+// Gentle ambient music box loop (Russian folk music box harmony)
 const PENTATONIC_MELODY = [
-  523.25, 587.33, 659.25, 783.99, 880.00,
-  1046.50, 880.00, 783.99, 659.25, 587.33
+  523.25, // C5
+  587.33, // D5
+  659.25, // E5
+  783.99, // G5
+  880.00, // A5
+  1046.50, // C6
+  880.00,  // A5
+  783.99,  // G5
+  659.25,  // E5
+  587.33,  // D5
+  659.25,  // E5
+  523.25   // C5
 ];
 
+let noteIndex = 0;
 let stateListeners: Array<(playing: boolean) => void> = [];
 
 export function subscribeBgmState(listener: (playing: boolean) => void): () => void {
@@ -147,6 +177,7 @@ export function subscribeBgmState(listener: (playing: boolean) => void): () => v
 }
 
 function notifyState(playing: boolean) {
+  isBgmPlaying = playing;
   stateListeners.forEach((l) => {
     try {
       l(playing);
@@ -160,59 +191,109 @@ export function getIsBgmPlaying(): boolean {
   return isBgmPlaying;
 }
 
-export function startAmbientBgm(): boolean {
+function playSingleChime(ctx: AudioContext, freq: number) {
   try {
-    if (isBgmPlaying) return true;
-    const ctx = getAudioContext();
-    if (!ctx) return false;
+    const now = ctx.currentTime;
 
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
+    // Primary fundamental bell
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now);
 
-    isBgmPlaying = true;
-    let noteIndex = 0;
+    // Warm bell-envelope
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.045, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.35);
 
-    const playNextNote = () => {
-      if (!isBgmPlaying || !ctx) return;
-      if (ctx.state === 'suspended') {
-        ctx.resume().catch(() => {});
-      }
-      const now = ctx.currentTime;
-      const freq = PENTATONIC_MELODY[noteIndex % PENTATONIC_MELODY.length];
-      noteIndex++;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
 
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
+    osc.start(now);
+    osc.stop(now + 1.35);
 
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, now);
+    // Subtle soft octave overtone for music-box sparkle
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(freq * 2, now);
 
-      gain.gain.setValueAtTime(0.04, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+    gain2.gain.setValueAtTime(0.0005, now);
+    gain2.gain.linearRampToValueAtTime(0.012, now + 0.015);
+    gain2.gain.exponentialRampToValueAtTime(0.00005, now + 0.5);
 
-      osc.connect(gain);
-      gain.connect(ctx.destination);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
 
-      osc.start(now);
-      osc.stop(now + 1.2);
-    };
-
-    playNextNote();
-    bgmInterval = setInterval(playNextNote, 1400);
-    notifyState(true);
-    return true;
-  } catch (e) {
-    return false;
+    osc2.start(now);
+    osc2.stop(now + 0.5);
+  } catch {
+    // ignore
   }
 }
 
-export function stopAmbientBgm(): void {
+function ensurePlaybackLoop() {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
   if (bgmInterval) {
     clearInterval(bgmInterval);
     bgmInterval = null;
   }
-  isBgmPlaying = false;
+
+  notifyState(true);
+
+  const step = () => {
+    if (!isBgmDesired) {
+      stopAmbientBgm();
+      return;
+    }
+    const currentCtx = getAudioContext();
+    if (!currentCtx) return;
+
+    if (currentCtx.state === 'suspended') {
+      currentCtx.resume().catch(() => {});
+    }
+
+    const freq = PENTATONIC_MELODY[noteIndex % PENTATONIC_MELODY.length];
+    noteIndex++;
+    playSingleChime(currentCtx, freq);
+  };
+
+  // Play initial chime immediately
+  step();
+  bgmInterval = setInterval(step, 1350);
+}
+
+export function startAmbientBgm(): boolean {
+  isBgmDesired = true;
+  try {
+    localStorage.removeItem('mfm_bgm_muted');
+  } catch {}
+
+  const ctx = getAudioContext();
+  if (!ctx) return false;
+
+  if (ctx.state === 'suspended') {
+    ctx.resume().then(() => {
+      ensurePlaybackLoop();
+    }).catch(() => {});
+  }
+
+  ensurePlaybackLoop();
+  return true;
+}
+
+export function stopAmbientBgm(): void {
+  isBgmDesired = false;
+  try {
+    localStorage.setItem('mfm_bgm_muted', 'true');
+  } catch {}
+
+  if (bgmInterval) {
+    clearInterval(bgmInterval);
+    bgmInterval = null;
+  }
   notifyState(false);
 }
 
@@ -228,25 +309,89 @@ export function toggleAmbientBgm(onStateChange?: (playing: boolean) => void): bo
   }
 }
 
-// Auto-activate audio on first user gesture anywhere on the site to conform to browser policies
+// Auto-activate audio reliably across Chrome, Yandex, mobile, tablets & desktops
 if (typeof window !== 'undefined') {
-  const tryAutoPlay = () => {
-    const started = startAmbientBgm();
-    if (started) {
-      window.removeEventListener('pointerdown', tryAutoPlay);
-      window.removeEventListener('keydown', tryAutoPlay);
-      window.removeEventListener('scroll', tryAutoPlay);
+  const unlockEvents = [
+    'pointerdown',
+    'touchstart',
+    'touchend',
+    'mousedown',
+    'click',
+    'keydown',
+    'scroll',
+    'wheel'
+  ];
+
+  const handleFirstUserInteraction = () => {
+    if (!isBgmDesired) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(() => {
+        if (isBgmDesired && !isBgmPlaying) {
+          ensurePlaybackLoop();
+        }
+      }).catch(() => {});
+    }
+
+    // Silent buffer unlock for mobile iOS Safari and Android Chrome/Yandex
+    try {
+      const buffer = ctx.createBuffer(1, 1, 22050);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.start(0);
+    } catch {}
+
+    if (isBgmDesired && !isBgmPlaying) {
+      ensurePlaybackLoop();
+    }
+
+    // Clean up listeners
+    unlockEvents.forEach((evt) => {
+      window.removeEventListener(evt, handleFirstUserInteraction, true);
+    });
+  };
+
+  // Register capturing listener so it catches any gesture immediately
+  unlockEvents.forEach((evt) => {
+    window.addEventListener(evt, handleFirstUserInteraction, { capture: true, passive: true });
+  });
+
+  // Attempt instant autoplay on page load if the browser / platform allows it
+  const tryImmediateAutoplay = () => {
+    if (!isBgmDesired) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(() => {
+        if (ctx.state === 'running' && isBgmDesired) {
+          ensurePlaybackLoop();
+        }
+      }).catch(() => {});
+    } else if (ctx.state === 'running' && isBgmDesired) {
+      ensurePlaybackLoop();
     }
   };
 
-  window.addEventListener('pointerdown', tryAutoPlay, { passive: true });
-  window.addEventListener('keydown', tryAutoPlay, { passive: true });
-  window.addEventListener('scroll', tryAutoPlay, { passive: true, once: true });
-
-  // Also try immediately in case the environment allows it
-  try {
-    startAmbientBgm();
-  } catch {
-    // browser requires gesture
+  if (document.readyState === 'complete') {
+    tryImmediateAutoplay();
+  } else {
+    window.addEventListener('load', tryImmediateAutoplay, { once: true });
   }
+
+  // Restore audio if tab was in background and user returns
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && isBgmDesired) {
+      const ctx = getAudioContext();
+      if (ctx && ctx.state === 'suspended') {
+        ctx.resume().then(() => {
+          if (!isBgmPlaying) ensurePlaybackLoop();
+        }).catch(() => {});
+      }
+    }
+  });
 }
+
