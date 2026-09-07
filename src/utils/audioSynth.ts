@@ -2,15 +2,15 @@
 
 let audioCtx: AudioContext | null = null;
 let bgmInterval: ReturnType<typeof setInterval> | null = null;
-let isBgmPlaying = false;
+let isBgmPlaying = true;
 let isBgmDesired = true;
 
-// Check user stored preference (default: enabled)
+// Sound is ALWAYS enabled by default on site entry as requested
 if (typeof window !== 'undefined') {
   try {
-    isBgmDesired = localStorage.getItem('mfm_bgm_muted') !== 'true';
+    localStorage.removeItem('mfm_bgm_muted');
   } catch {
-    isBgmDesired = true;
+    // ignore
   }
 }
 
@@ -319,7 +319,9 @@ if (typeof window !== 'undefined') {
     'click',
     'keydown',
     'scroll',
-    'wheel'
+    'wheel',
+    'pointermove',
+    'mousemove'
   ];
 
   const handleFirstUserInteraction = () => {
@@ -329,7 +331,7 @@ if (typeof window !== 'undefined') {
 
     if (ctx.state === 'suspended') {
       ctx.resume().then(() => {
-        if (isBgmDesired && !isBgmPlaying) {
+        if (isBgmDesired) {
           ensurePlaybackLoop();
         }
       }).catch(() => {});
@@ -344,7 +346,7 @@ if (typeof window !== 'undefined') {
       source.start(0);
     } catch {}
 
-    if (isBgmDesired && !isBgmPlaying) {
+    if (isBgmDesired) {
       ensurePlaybackLoop();
     }
 
@@ -354,12 +356,15 @@ if (typeof window !== 'undefined') {
     });
   };
 
-  // Register capturing listener so it catches any gesture immediately
+  // Register capturing listener so it catches any gesture or movement immediately
   unlockEvents.forEach((evt) => {
     window.addEventListener(evt, handleFirstUserInteraction, { capture: true, passive: true });
   });
 
-  // Attempt instant autoplay on page load if the browser / platform allows it
+  // Start playback loop immediately on startup so sound is enabled and running right away
+  ensurePlaybackLoop();
+
+  // Attempt instant unmuted resume on page load
   const tryImmediateAutoplay = () => {
     if (!isBgmDesired) return;
     const ctx = getAudioContext();
@@ -367,12 +372,10 @@ if (typeof window !== 'undefined') {
 
     if (ctx.state === 'suspended') {
       ctx.resume().then(() => {
-        if (ctx.state === 'running' && isBgmDesired) {
+        if (isBgmDesired) {
           ensurePlaybackLoop();
         }
       }).catch(() => {});
-    } else if (ctx.state === 'running' && isBgmDesired) {
-      ensurePlaybackLoop();
     }
   };
 
@@ -380,6 +383,7 @@ if (typeof window !== 'undefined') {
     tryImmediateAutoplay();
   } else {
     window.addEventListener('load', tryImmediateAutoplay, { once: true });
+    window.addEventListener('DOMContentLoaded', tryImmediateAutoplay, { once: true });
   }
 
   // Restore audio if tab was in background and user returns
@@ -388,7 +392,7 @@ if (typeof window !== 'undefined') {
       const ctx = getAudioContext();
       if (ctx && ctx.state === 'suspended') {
         ctx.resume().then(() => {
-          if (!isBgmPlaying) ensurePlaybackLoop();
+          if (isBgmDesired) ensurePlaybackLoop();
         }).catch(() => {});
       }
     }
