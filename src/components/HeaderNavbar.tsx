@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, MouseEvent } from 'react';
 import { Volume2, VolumeX, Mail, Sparkles, Compass, Heart, Menu, X } from 'lucide-react';
 import {
   toggleAmbientBgm,
+  startAmbientBgm,
+  stopAmbientBgm,
   subscribeBgmState,
   getIsBgmPlaying,
 } from '../utils/audioSynth';
@@ -24,8 +26,14 @@ export function HeaderNavbar({ onOpenMailbox, stampsCount, totalStamps }: Header
     return unsubBgm;
   }, []);
 
-  const handleToggleSound = () => {
-    toggleAmbientBgm();
+  const handleToggleSound = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (isPlaying) {
+      stopAmbientBgm();
+    } else {
+      startAmbientBgm();
+    }
   };
 
   return (

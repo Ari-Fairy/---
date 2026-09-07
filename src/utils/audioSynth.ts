@@ -5,14 +5,14 @@ let bgmAudioElement: HTMLAudioElement | null = null;
 let stateListeners: Array<(playing: boolean) => void> = [];
 let gestureUnlockRegistered = false;
 
-// By default, music is ALWAYS ON unless the user explicitly muted it
+// By default, music is ALWAYS ON for every page visit and reload
 let isUserMuted = false;
 if (typeof window !== 'undefined') {
   try {
-    isUserMuted = localStorage.getItem('mfm_bgm_muted') === 'true';
-  } catch {
-    isUserMuted = false;
-  }
+    // Remove any previous mute flag so sound is always enabled on site load/reload
+    localStorage.removeItem('mfm_bgm_muted');
+    localStorage.removeItem('mfm_bgm_user_muted');
+  } catch {}
 }
 
 export function getAudioContext(): AudioContext | null {
@@ -83,7 +83,13 @@ function setupGestureUnlock() {
     'wheel'
   ];
 
-  const onUserTouch = () => {
+  const onUserTouch = (e: Event) => {
+    // Never intercept clicks destined for the sound toggle button
+    const target = e.target as HTMLElement | null;
+    if (target && target.closest && target.closest('#btn-toggle-sound')) {
+      return;
+    }
+
     if (!isUserMuted) {
       const audio = getBgmAudio();
       if (audio && audio.paused) {
@@ -151,10 +157,6 @@ export function ensurePlaybackLoop(): void {
 
 export function startAmbientBgm(): boolean {
   isUserMuted = false;
-  try {
-    localStorage.removeItem('mfm_bgm_muted');
-  } catch {}
-
   playBgm();
   notifyState(true);
   return true;
@@ -162,10 +164,6 @@ export function startAmbientBgm(): boolean {
 
 export function stopAmbientBgm(): void {
   isUserMuted = true;
-  try {
-    localStorage.setItem('mfm_bgm_muted', 'true');
-  } catch {}
-
   pauseBgm();
   notifyState(false);
 }
