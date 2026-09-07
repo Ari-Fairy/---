@@ -1,11 +1,7 @@
-// Web Audio API procedural sound synthesizer (100% self-contained, zero external audio files needed)
+// Background audio manager and procedural sound effect synthesizer
 
 let audioCtx: AudioContext | null = null;
-let isBgmPlaying = true;
-let isBgmDesired = true;
-let schedulerTimer: ReturnType<typeof setInterval> | null = null;
-let nextNoteTime = 0;
-let noteIndex = 0;
+let bgmAudioElement: HTMLAudioElement | null = null;
 let stateListeners: Array<(playing: boolean) => void> = [];
 
 export function getAudioContext(): AudioContext | null {
@@ -21,7 +17,107 @@ export function getAudioContext(): AudioContext | null {
   return audioCtx;
 }
 
-// Gentle sound effects
+function getBgmAudio(): HTMLAudioElement | null {
+  if (typeof window === 'undefined') return null;
+  if (!bgmAudioElement) {
+    bgmAudioElement = document.getElementById('bgm-musicbox') as HTMLAudioElement | null;
+    if (!bgmAudioElement) {
+      bgmAudioElement = new Audio('/audio/musicbox.wav');
+      bgmAudioElement.id = 'bgm-musicbox';
+      bgmAudioElement.loop = true;
+      bgmAudioElement.volume = 0.35;
+      bgmAudioElement.preload = 'auto';
+      bgmAudioElement.setAttribute('playsinline', 'true');
+      document.body.appendChild(bgmAudioElement);
+    }
+  }
+  return bgmAudioElement;
+}
+
+function isUserExplicitlyMuted(): boolean {
+  try {
+    return localStorage.getItem('mfm_bgm_user_muted') === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function getIsBgmPlaying(): boolean {
+  if (isUserExplicitlyMuted()) return false;
+  const audio = getBgmAudio();
+  if (audio) {
+    return !audio.paused;
+  }
+  return true;
+}
+
+export function isAudioActuallyRunning(): boolean {
+  return getIsBgmPlaying();
+}
+
+function notifyState(playing: boolean) {
+  stateListeners.forEach((l) => {
+    try {
+      l(playing);
+    } catch {}
+  });
+}
+
+export function subscribeBgmState(listener: (playing: boolean) => void): () => void {
+  stateListeners.push(listener);
+  listener(getIsBgmPlaying());
+  return () => {
+    stateListeners = stateListeners.filter((l) => l !== listener);
+  };
+}
+
+export function subscribeAudioActiveState(listener: (active: boolean) => void): () => void {
+  return subscribeBgmState(listener);
+}
+
+export function ensurePlaybackLoop(): void {
+  startAmbientBgm();
+}
+
+export function startAmbientBgm(): boolean {
+  try {
+    localStorage.removeItem('mfm_bgm_user_muted');
+  } catch {}
+
+  const audio = getBgmAudio();
+  if (audio) {
+    audio.play().catch(() => {});
+  }
+  notifyState(true);
+  return true;
+}
+
+export function stopAmbientBgm(): void {
+  try {
+    localStorage.setItem('mfm_bgm_user_muted', 'true');
+  } catch {}
+
+  const audio = getBgmAudio();
+  if (audio) {
+    audio.pause();
+  }
+  notifyState(false);
+}
+
+export function toggleAmbientBgm(): boolean {
+  const audio = getBgmAudio();
+  const isPlaying = audio ? !audio.paused : !isUserExplicitlyMuted();
+
+  if (isPlaying) {
+    stopAmbientBgm();
+    return false;
+  } else {
+    startAmbientBgm();
+    return true;
+  }
+}
+
+// Procedural Interactive Sound Effects (Instantaneous, self-contained Web Audio)
 export function playSealBreakSound() {
   try {
     const ctx = getAudioContext();
@@ -121,205 +217,48 @@ export function playVictorySound() {
   } catch {}
 }
 
-// Gentle ambient Russian folk music box melody
-const PENTATONIC_MELODY = [
-  523.25, // C5
-  587.33, // D5
-  659.25, // E5
-  783.99, // G5
-  880.00, // A5
-  1046.50, // C6
-  880.00,  // A5
-  783.99,  // G5
-  659.25,  // E5
-  587.33,  // D5
-  659.25,  // E5
-  523.25   // C5
-];
-
-function scheduleChime(time: number, freq: number) {
-  const ctx = getAudioContext();
-  if (!ctx) return;
-  try {
-    // Primary bell tone
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq, time);
-
-    gain.gain.setValueAtTime(0.0001, time);
-    gain.gain.linearRampToValueAtTime(0.045, time + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, time + 1.35);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start(time);
-    osc.stop(time + 1.35);
-
-    // Soft sparkle harmonic
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(freq * 2, time);
-
-    gain2.gain.setValueAtTime(0.0001, time);
-    gain2.gain.linearRampToValueAtTime(0.012, time + 0.015);
-    gain2.gain.exponentialRampToValueAtTime(0.00005, time + 0.5);
-
-    osc2.connect(gain2);
-    gain2.connect(ctx.destination);
-
-    osc2.start(time);
-    osc2.stop(time + 0.5);
-  } catch {}
-}
-
-const NOTE_INTERVAL = 1.35; // seconds
-const LOOKAHEAD_SEC = 0.5;
-
-function runScheduler() {
-  if (!isBgmDesired || !isBgmPlaying) return;
-  const ctx = getAudioContext();
-  if (!ctx) return;
-
-  if (ctx.state === 'suspended') {
-    ctx.resume().catch(() => {});
-    return;
-  }
-
-  // Catch up clock if behind (tab switch, etc.)
-  if (nextNoteTime < ctx.currentTime) {
-    nextNoteTime = ctx.currentTime + 0.05;
-  }
-
-  while (nextNoteTime < ctx.currentTime + LOOKAHEAD_SEC) {
-    const freq = PENTATONIC_MELODY[noteIndex % PENTATONIC_MELODY.length];
-    noteIndex++;
-    scheduleChime(nextNoteTime, freq);
-    nextNoteTime += NOTE_INTERVAL;
-  }
-}
-
-function startScheduler() {
-  if (!schedulerTimer) {
-    nextNoteTime = 0;
-    schedulerTimer = setInterval(runScheduler, 100);
-  }
-  runScheduler();
-}
-
-function stopScheduler() {
-  if (schedulerTimer) {
-    clearInterval(schedulerTimer);
-    schedulerTimer = null;
-  }
-}
-
-function notifyState(playing: boolean) {
-  isBgmPlaying = playing;
-  stateListeners.forEach((l) => {
-    try {
-      l(playing);
-    } catch {}
-  });
-}
-
-export function subscribeBgmState(listener: (playing: boolean) => void): () => void {
-  stateListeners.push(listener);
-  listener(isBgmPlaying);
-  return () => {
-    stateListeners = stateListeners.filter((l) => l !== listener);
-  };
-}
-
-export function subscribeAudioActiveState(listener: (active: boolean) => void): () => void {
-  return subscribeBgmState(listener);
-}
-
-export function isAudioActuallyRunning(): boolean {
-  return isBgmPlaying;
-}
-
-export function getIsBgmPlaying(): boolean {
-  return isBgmPlaying;
-}
-
-export function ensurePlaybackLoop(): void {
-  startAmbientBgm();
-}
-
-export function startAmbientBgm(): boolean {
-  isBgmDesired = true;
-  isBgmPlaying = true;
-  const ctx = getAudioContext();
-  if (ctx && ctx.state === 'suspended') {
-    ctx.resume().catch(() => {});
-  }
-  startScheduler();
-  notifyState(true);
-  return true;
-}
-
-export function stopAmbientBgm(): void {
-  isBgmDesired = false;
-  isBgmPlaying = false;
-  stopScheduler();
-  notifyState(false);
-}
-
-export function toggleAmbientBgm(): boolean {
-  if (isBgmPlaying) {
-    stopAmbientBgm();
-    return false;
-  } else {
-    startAmbientBgm();
-    return true;
-  }
-}
-
-// Global user interaction listener to wake up AudioContext on the first tap/click anywhere
+// Global browser event hooks: ensure audio element syncs with UI state
 if (typeof window !== 'undefined') {
-  const unlockEvents = ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown'];
+  const syncWithAudio = () => {
+    const audio = getBgmAudio();
+    if (audio) {
+      audio.addEventListener('play', () => notifyState(true));
+      audio.addEventListener('pause', () => notifyState(false));
 
-  const handleFirstInteraction = () => {
-    const ctx = getAudioContext();
-    if (ctx && ctx.state === 'suspended') {
-      ctx.resume().then(() => {
-        if (isBgmDesired) {
-          startScheduler();
-        }
-      }).catch(() => {});
-    } else if (isBgmDesired) {
-      startScheduler();
+      if (!isUserExplicitlyMuted()) {
+        audio.play().then(() => notifyState(true)).catch(() => {});
+      }
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', syncWithAudio);
+  } else {
+    syncWithAudio();
+  }
+
+  // Any user touch, swipe, or click on the screen will trigger playback if browser held it
+  const unlockEvents = ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown', 'scroll'];
+  const handleInteraction = () => {
+    if (!isUserExplicitlyMuted()) {
+      const audio = getBgmAudio();
+      if (audio && audio.paused) {
+        audio.play().then(() => notifyState(true)).catch(() => {});
+      }
     }
   };
 
   unlockEvents.forEach((evt) => {
-    window.addEventListener(evt, handleFirstInteraction, { capture: true, passive: true });
-    document.addEventListener(evt, handleFirstInteraction, { capture: true, passive: true });
+    window.addEventListener(evt, handleInteraction, { capture: true, passive: true });
+    document.addEventListener(evt, handleInteraction, { capture: true, passive: true });
   });
 
-  // Start scheduler immediately so as soon as context runs, notes stream smoothly
-  startScheduler();
-
-  // Try immediate resume
-  try {
-    const ctx = getAudioContext();
-    if (ctx && ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
-  } catch {}
-
-  // Handle visibility changes (resume when returning to tab)
+  // Resume when returning to tab
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && isBgmDesired) {
-      const ctx = getAudioContext();
-      if (ctx && ctx.state === 'suspended') {
-        ctx.resume().catch(() => {});
-      }
-      if (isBgmPlaying) {
-        startScheduler();
+    if (document.visibilityState === 'visible' && !isUserExplicitlyMuted()) {
+      const audio = getBgmAudio();
+      if (audio && audio.paused) {
+        audio.play().then(() => notifyState(true)).catch(() => {});
       }
     }
   });
