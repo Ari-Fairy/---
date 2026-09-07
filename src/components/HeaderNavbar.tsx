@@ -1,14 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Volume2, VolumeX, Mail, Sparkles, Compass, Heart, Menu, X, Music } from 'lucide-react';
-import {
-  toggleAmbientBgm,
-  subscribeBgmState,
-  getIsBgmPlaying,
-  subscribeAudioActiveState,
-  isAudioActuallyRunning,
-  getAudioContext,
-  ensurePlaybackLoop,
-} from '../utils/audioSynth';
+import { Volume2, VolumeX, Mail, Sparkles, Compass, Heart, Menu, X } from 'lucide-react';
+import { toggleAmbientBgm, subscribeBgmState, getIsBgmPlaying } from '../utils/audioSynth';
 import { LanguageSelector } from './LanguageSelector';
 
 interface HeaderNavbarProps {
@@ -19,36 +11,17 @@ interface HeaderNavbarProps {
 
 export function HeaderNavbar({ onOpenMailbox, stampsCount, totalStamps }: HeaderNavbarProps) {
   const [isPlaying, setIsPlaying] = useState(() => getIsBgmPlaying());
-  const [isAudioRunning, setIsAudioRunning] = useState(() => isAudioActuallyRunning());
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const unsubBgm = subscribeBgmState((playing) => {
+    const unsubscribe = subscribeBgmState((playing) => {
       setIsPlaying(playing);
     });
-    const unsubActive = subscribeAudioActiveState((active) => {
-      setIsAudioRunning(active);
-    });
-    return () => {
-      unsubBgm();
-      unsubActive();
-    };
+    return unsubscribe;
   }, []);
 
   const handleToggleSound = () => {
-    const ctx = getAudioContext();
-    if (ctx && ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
     toggleAmbientBgm();
-  };
-
-  const handleActivateAudio = () => {
-    const ctx = getAudioContext();
-    if (ctx && ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
-    ensurePlaybackLoop();
   };
 
   return (
@@ -122,7 +95,7 @@ export function HeaderNavbar({ onOpenMailbox, stampsCount, totalStamps }: Header
             title={isPlaying ? 'Музыка включена (нажмите, чтобы заглушить)' : 'Включить уютную музыку'}
           >
             {isPlaying ? (
-              <Volume2 className={`w-4 h-4 text-amber-800 ${isAudioRunning ? 'animate-pulse' : ''}`} />
+              <Volume2 className="w-4 h-4 text-amber-800 animate-pulse" />
             ) : (
               <VolumeX className="w-4 h-4" />
             )}
@@ -229,18 +202,6 @@ export function HeaderNavbar({ onOpenMailbox, stampsCount, totalStamps }: Header
               </button>
             </div>
           </nav>
-        </div>
-      )}
-
-      {/* Subtle notification banner when audio is enabled by default but the browser requires a gesture to begin playing */}
-      {isPlaying && !isAudioRunning && (
-        <div
-          onClick={handleActivateAudio}
-          className="bg-gradient-to-r from-amber-50 via-amber-100/90 to-amber-50 border-t border-amber-300/60 px-3 py-1.5 text-[11px] sm:text-xs font-medium text-amber-950 text-center flex items-center justify-center gap-1.5 cursor-pointer hover:bg-amber-100 transition-all select-none shadow-2xs"
-          title="Нажмите сюда или коснитесь экрана, чтобы заиграла музыка"
-        >
-          <Music className="w-3.5 h-3.5 text-amber-700 animate-bounce shrink-0" />
-          <span>Музыка включена! <strong>Коснитесь экрана</strong> или нажмите сюда, чтобы зазвучала шкатулка 🎵</span>
         </div>
       )}
     </header>
