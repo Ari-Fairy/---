@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Stamp, Sparkles, RefreshCw, Send, CheckCircle, Gift, Heart, Code2 } from 'lucide-react';
 import { PostcardStamp } from '../types';
-import { playSealBreakSound, playStampSound, startAmbientBgm } from '../utils/audioSynth';
+import { playSealBreakSound, playStampSound, startAmbientBgm, getAudioContext } from '../utils/audioSynth';
 import confetti from 'canvas-confetti';
 import costumeDanceImage from '../assets/images/regenerated_image_1788773329767.png';
 import samovarFeastImage from '../assets/images/regenerated_image_1788773748221.png';
@@ -56,6 +56,10 @@ export function PostcardEnvelope({ stamps, onUnlockStamp }: PostcardEnvelopeProp
 
   const handleOpenEnvelope = () => {
     if (!isOpen) {
+      const ctx = getAudioContext();
+      if (ctx && ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
       playSealBreakSound();
       startAmbientBgm();
       confetti({

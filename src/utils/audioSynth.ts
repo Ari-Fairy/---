@@ -14,7 +14,7 @@ if (typeof window !== 'undefined') {
   }
 }
 
-function getAudioContext(): AudioContext | null {
+export function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   if (!audioCtx) {
     const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -167,12 +167,21 @@ const PENTATONIC_MELODY = [
 
 let noteIndex = 0;
 let stateListeners: Array<(playing: boolean) => void> = [];
+let audioActiveListeners: Array<(active: boolean) => void> = [];
 
 export function subscribeBgmState(listener: (playing: boolean) => void): () => void {
   stateListeners.push(listener);
   listener(isBgmPlaying);
   return () => {
     stateListeners = stateListeners.filter((l) => l !== listener);
+  };
+}
+
+export function subscribeAudioActiveState(listener: (active: boolean) => void): () => void {
+  audioActiveListeners.push(listener);
+  listener(isAudioActuallyRunning());
+  return () => {
+    audioActiveListeners = audioActiveListeners.filter((l) => l !== listener);
   };
 }
 
@@ -185,10 +194,26 @@ function notifyState(playing: boolean) {
       // ignore
     }
   });
+  notifyAudioActiveState();
+}
+
+function notifyAudioActiveState() {
+  const active = isAudioActuallyRunning();
+  audioActiveListeners.forEach((l) => {
+    try {
+      l(active);
+    } catch {
+      // ignore
+    }
+  });
 }
 
 export function getIsBgmPlaying(): boolean {
   return isBgmPlaying;
+}
+
+export function isAudioActuallyRunning(): boolean {
+  return isBgmPlaying && isBgmDesired && audioCtx !== null && audioCtx.state === 'running';
 }
 
 function playSingleChime(ctx: AudioContext, freq: number) {
@@ -203,7 +228,7 @@ function playSingleChime(ctx: AudioContext, freq: number) {
 
     // Warm bell-envelope
     gain.gain.setValueAtTime(0.001, now);
-    gain.gain.linearRampToValueAtTime(0.045, now + 0.02);
+    gain.gain.linearRampToValueAtTime(0.05, now + 0.02);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.35);
 
     osc.connect(gain);
@@ -219,7 +244,7 @@ function playSingleChime(ctx: AudioContext, freq: number) {
     osc2.frequency.setValueAtTime(freq * 2, now);
 
     gain2.gain.setValueAtTime(0.0005, now);
-    gain2.gain.linearRampToValueAtTime(0.012, now + 0.015);
+    gain2.gain.linearRampToValueAtTime(0.015, now + 0.015);
     gain2.gain.exponentialRampToValueAtTime(0.00005, now + 0.5);
 
     osc2.connect(gain2);
@@ -232,7 +257,7 @@ function playSingleChime(ctx: AudioContext, freq: number) {
   }
 }
 
-function ensurePlaybackLoop() {
+export function ensurePlaybackLoop() {
   const ctx = getAudioContext();
   if (!ctx) return;
 
@@ -252,21 +277,31 @@ function ensurePlaybackLoop() {
     if (!currentCtx) return;
 
     if (currentCtx.state === 'suspended') {
-      currentCtx.resume().catch(() => {});
+      currentCtx.resume().then(() => {
+        if (currentCtx.state === 'running') {
+          notifyAudioActiveState();
+        }
+      }).catch(() => {});
+      // Wait until context is running before playing notes
+      return;
     }
 
+    notifyAudioActiveState();
     const freq = PENTATONIC_MELODY[noteIndex % PENTATONIC_MELODY.length];
     noteIndex++;
     playSingleChime(currentCtx, freq);
   };
 
-  // Play initial chime immediately
-  step();
+  // If already running, play initial note right away
+  if (ctx.state === 'running') {
+    step();
+  }
   bgmInterval = setInterval(step, 1350);
 }
 
 export function startAmbientBgm(): boolean {
   isBgmDesired = true;
+  isBgmPlaying = true;
   try {
     localStorage.removeItem('mfm_bgm_muted');
   } catch {}
@@ -277,6 +312,7 @@ export function startAmbientBgm(): boolean {
   if (ctx.state === 'suspended') {
     ctx.resume().then(() => {
       ensurePlaybackLoop();
+      notifyAudioActiveState();
     }).catch(() => {});
   }
 
@@ -286,6 +322,7 @@ export function startAmbientBgm(): boolean {
 
 export function stopAmbientBgm(): void {
   isBgmDesired = false;
+  isBgmPlaying = false;
   try {
     localStorage.setItem('mfm_bgm_muted', 'true');
   } catch {}
@@ -298,7 +335,7 @@ export function stopAmbientBgm(): void {
 }
 
 export function toggleAmbientBgm(onStateChange?: (playing: boolean) => void): boolean {
-  if (isBgmPlaying) {
+  if (isBgmPlaying && isAudioActuallyRunning()) {
     stopAmbientBgm();
     onStateChange?.(false);
     return false;
@@ -315,25 +352,32 @@ if (typeof window !== 'undefined') {
     'pointerdown',
     'touchstart',
     'touchend',
-    'mousedown',
     'click',
     'keydown',
-    'scroll',
-    'wheel',
-    'pointermove',
-    'mousemove'
+    'scroll'
   ];
 
-  const handleFirstUserInteraction = () => {
+  const handleUserGesture = () => {
     if (!isBgmDesired) return;
     const ctx = getAudioContext();
     if (!ctx) return;
+
+    const detachIfRunning = () => {
+      if (ctx.state === 'running') {
+        unlockEvents.forEach((evt) => {
+          window.removeEventListener(evt, handleUserGesture, true);
+          document.removeEventListener(evt, handleUserGesture, true);
+        });
+        notifyAudioActiveState();
+      }
+    };
 
     if (ctx.state === 'suspended') {
       ctx.resume().then(() => {
         if (isBgmDesired) {
           ensurePlaybackLoop();
         }
+        detachIfRunning();
       }).catch(() => {});
     }
 
@@ -350,15 +394,13 @@ if (typeof window !== 'undefined') {
       ensurePlaybackLoop();
     }
 
-    // Clean up listeners
-    unlockEvents.forEach((evt) => {
-      window.removeEventListener(evt, handleFirstUserInteraction, true);
-    });
+    detachIfRunning();
   };
 
-  // Register capturing listener so it catches any gesture or movement immediately
+  // Register capturing listener on both window and document
   unlockEvents.forEach((evt) => {
-    window.addEventListener(evt, handleFirstUserInteraction, { capture: true, passive: true });
+    window.addEventListener(evt, handleUserGesture, { capture: true, passive: true });
+    document.addEventListener(evt, handleUserGesture, { capture: true, passive: true });
   });
 
   // Start playback loop immediately on startup so sound is enabled and running right away
@@ -372,10 +414,13 @@ if (typeof window !== 'undefined') {
 
     if (ctx.state === 'suspended') {
       ctx.resume().then(() => {
-        if (isBgmDesired) {
+        if (isBgmDesired && ctx.state === 'running') {
           ensurePlaybackLoop();
+          notifyAudioActiveState();
         }
       }).catch(() => {});
+    } else if (ctx.state === 'running') {
+      notifyAudioActiveState();
     }
   };
 
@@ -393,6 +438,7 @@ if (typeof window !== 'undefined') {
       if (ctx && ctx.state === 'suspended') {
         ctx.resume().then(() => {
           if (isBgmDesired) ensurePlaybackLoop();
+          notifyAudioActiveState();
         }).catch(() => {});
       }
     }
