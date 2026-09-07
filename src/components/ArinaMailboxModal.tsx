@@ -249,7 +249,7 @@ export function ArinaMailboxModal({ isOpen, onClose }: ArinaMailboxModalProps) {
               </span>
               <span className="text-stone-300">•</span>
               <span className="text-stone-600">
-                С книгами: {submissions.filter((s) => s.lovesReading && s.bookTitle).length}
+                С рекомендациями: {submissions.filter((s) => s.bookTitle || s.recommendationTitle).length}
               </span>
             </div>
 
@@ -266,14 +266,14 @@ export function ArinaMailboxModal({ isOpen, onClose }: ArinaMailboxModalProps) {
               </button>
               <button
                 onClick={() => setFilterBooksOnly(true)}
-                className={`px-3 py-1 rounded-lg font-medium transition-all flex items-center gap-1 ${
+                className={`px-3 py-1 rounded-lg font-medium transition-all flex items-center gap-1.5 ${
                   filterBooksOnly
                     ? 'bg-rose-700 text-white'
                     : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-50'
                 }`}
               >
-                <BookOpen className="w-3 h-3" />
-                <span>Только с книгами</span>
+                <Sparkles className="w-3 h-3" />
+                <span>С рекомендациями</span>
               </button>
             </div>
           </div>
@@ -343,23 +343,52 @@ export function ArinaMailboxModal({ isOpen, onClose }: ArinaMailboxModalProps) {
                     </div>
                   )}
 
-                  {/* Book Recommendation block */}
-                  {item.lovesReading && item.bookTitle ? (
+                  {/* Media / Book / Game Recommendation block */}
+                  {(item.lovesReading || item.bookTitle || item.recommendationTitle) && (item.bookTitle || item.recommendationTitle) ? (
                     <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200 text-xs font-sans-ui space-y-2">
                       <div className="flex items-center gap-2 font-bold text-amber-950 text-sm">
-                        <BookOpen className="w-4 h-4 text-amber-800" />
-                        <span>{item.bookTitle} {item.bookAuthor ? `— ${item.bookAuthor}` : ''}</span>
+                        <span className="text-base">
+                          {item.recommendationType === 'game'
+                            ? '🎮'
+                            : item.recommendationType === 'movie'
+                            ? '🍿'
+                            : item.recommendationType === 'series'
+                            ? '📺'
+                            : item.recommendationType === 'article'
+                            ? '📰'
+                            : '📖'}
+                        </span>
+                        <span>
+                          {item.recommendationTitle || item.bookTitle}{' '}
+                          {(item.recommendationCreator || item.bookAuthor)
+                            ? `— ${item.recommendationCreator || item.bookAuthor}`
+                            : ''}
+                        </span>
+                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 ml-auto">
+                          {item.recommendationType === 'game'
+                            ? 'Игра'
+                            : item.recommendationType === 'movie'
+                            ? 'Фильм'
+                            : item.recommendationType === 'series'
+                            ? 'Сериал'
+                            : item.recommendationType === 'article'
+                            ? 'Статья'
+                            : 'Книга'}
+                        </span>
                       </div>
 
-                      {item.bookReview && (
+                      {(item.recommendationReview || item.bookReview) && (
                         <p className="text-stone-700 leading-relaxed">
-                          <strong>Отзыв:</strong> {item.bookReview}
+                          <strong>Впечатления / Отзыв:</strong> {item.recommendationReview || item.bookReview}
                         </p>
                       )}
 
                       {item.favoriteQuote && (
                         <p className="text-stone-600 italic">
-                          <strong>Цитата:</strong> «{item.favoriteQuote}»
+                          <strong>
+                            {item.recommendationType === 'game' ? 'Момент / Персонаж:' : 'Цитата / Момент:'}
+                          </strong>{' '}
+                          «{item.favoriteQuote}»
                         </p>
                       )}
 

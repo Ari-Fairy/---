@@ -27,3 +27,31 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(180, 83, 9, 0.45);
 }
+
+/* Seamless Google Translate styling */
+.goog-te-banner-frame.skiptranslate,
+.goog-te-banner-frame,
+#goog-gt-tt,
+.goog-te-balloon-frame {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+body {
+  top: 0px !important;
+  position: static !important;
+}
+
+.skiptranslate > iframe {
+  display: none !important;
+}
+
+#google_translate_element {
+  display: none !important;
+}
+
+font {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+

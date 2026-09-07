@@ -24,7 +24,7 @@ export interface SurveyFormData {
   countryCity: string;
   howMet: string;
   interests: string[];
-  recommendationType: 'book' | 'movie' | 'series' | 'article';
+  recommendationType: 'book' | 'movie' | 'series' | 'article' | 'game';
   lovesReading?: boolean;
   recommendationTitle: string;
   recommendationCreator: string;

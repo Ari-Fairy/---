@@ -5,7 +5,19 @@ import confetti from 'canvas-confetti';
 export function Footer() {
   const [copied, setCopied] = useState(false);
 
-  const handleShare = () => {
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Интерактивная открытка-сувенир МФМ 2026 от Арины',
+          text: 'Привет! Лови памятную открытку-сувенир с МФМ 2026 от Арины:',
+          url: window.location.href,
+        });
+        return;
+      } catch (e) {
+        // User cancelled share dialog or not supported, proceed to clipboard
+      }
+    }
     if (navigator.clipboard) {
       navigator.clipboard.writeText(window.location.href);
       setCopied(true);
@@ -40,10 +52,10 @@ export function Footer() {
           <button
             id="btn-share-souvenir"
             onClick={handleShare}
-            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-700 hover:to-rose-700 text-white text-xs font-bold flex items-center gap-2 shadow-md transition-all font-sans-ui"
+            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-700 hover:to-rose-700 text-white text-xs font-bold flex items-center gap-2 shadow-md transition-all font-sans-ui cursor-pointer"
           >
             {copied ? <Check className="w-4 h-4 text-emerald-300" /> : <Share2 className="w-4 h-4" />}
-            <span>{copied ? 'Ссылка скопирована!' : 'Обменяться ссылкой на сувенир'}</span>
+            <span>{copied ? 'Ссылка скопирована!' : 'Скопировать ссылку на открытку'}</span>
           </button>
         </div>
 

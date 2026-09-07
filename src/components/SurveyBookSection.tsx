@@ -83,18 +83,57 @@ export function SurveyBookSection({ quizScore, onUnlockStamp }: SurveyBookSectio
       const updated = exists
         ? prev.interests.filter((i) => i !== id)
         : [...prev.interests, id];
-      const isReadingSelected = updated.includes('reading');
+      
+      // Recommendation can be triggered by any media interest:
+      // books, movies, series, games, articles/media, cartoons
+      const RECOMMENDABLE_INTERESTS = ['reading', 'movies', 'series', 'gaming', 'media', 'cartoons'];
+      const hasMediaInterest = updated.some((i) => RECOMMENDABLE_INTERESTS.includes(i));
+
+      let nextRecType = prev.recommendationType;
+      // When newly selected, automatically switch recommendation tab to match the interest
+      if (!exists) {
+        if (id === 'gaming') nextRecType = 'game';
+        else if (id === 'movies' || id === 'cartoons') nextRecType = 'movie';
+        else if (id === 'series') nextRecType = 'series';
+        else if (id === 'reading') nextRecType = 'book';
+        else if (id === 'media') nextRecType = 'article';
+      } else {
+        // If current rec type was unchecked, smoothly fallback to whatever media is still selected
+        if (id === 'reading' && nextRecType === 'book') {
+          if (updated.includes('movies')) nextRecType = 'movie';
+          else if (updated.includes('series')) nextRecType = 'series';
+          else if (updated.includes('gaming')) nextRecType = 'game';
+          else if (updated.includes('media')) nextRecType = 'article';
+        } else if (id === 'movies' && nextRecType === 'movie') {
+          if (updated.includes('series')) nextRecType = 'series';
+          else if (updated.includes('gaming')) nextRecType = 'game';
+          else if (updated.includes('reading')) nextRecType = 'book';
+          else if (updated.includes('media')) nextRecType = 'article';
+        } else if (id === 'series' && nextRecType === 'series') {
+          if (updated.includes('movies')) nextRecType = 'movie';
+          else if (updated.includes('gaming')) nextRecType = 'game';
+          else if (updated.includes('reading')) nextRecType = 'book';
+          else if (updated.includes('media')) nextRecType = 'article';
+        } else if (id === 'gaming' && nextRecType === 'game') {
+          if (updated.includes('movies')) nextRecType = 'movie';
+          else if (updated.includes('series')) nextRecType = 'series';
+          else if (updated.includes('reading')) nextRecType = 'book';
+          else if (updated.includes('media')) nextRecType = 'article';
+        }
+      }
+
       return {
         ...prev,
         interests: updated,
-        lovesReading: isReadingSelected,
+        recommendationType: nextRecType,
+        lovesReading: hasMediaInterest,
       };
     });
   };
 
-  const handleRecTypeChange = (type: 'book' | 'movie' | 'series' | 'article') => {
+  const handleRecTypeChange = (type: 'book' | 'movie' | 'series' | 'article' | 'game') => {
     playStampSound();
-    setFormData((prev) => ({ ...prev, recommendationType: type }));
+    setFormData((prev) => ({ ...prev, recommendationType: type, lovesReading: true }));
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -106,14 +145,16 @@ export function SurveyBookSection({ quizScore, onUnlockStamp }: SurveyBookSectio
     const currentTitle = (formData.recommendationTitle || formData.bookTitle || '').trim();
     if (formData.lovesReading && !currentTitle) {
       const typeLabel =
-        formData.recommendationType === 'movie'
+        formData.recommendationType === 'game'
+          ? 'видеоигры'
+          : formData.recommendationType === 'movie'
           ? 'фильма'
           : formData.recommendationType === 'series'
           ? 'сериала или дорамы'
           : formData.recommendationType === 'article'
           ? 'статьи'
           : 'книги или новеллы';
-      setErrorMessage(`Пожалуйста, поделись названием любимого ${typeLabel}!`);
+      setErrorMessage(`Пожалуйста, поделись названием любимой ${typeLabel}!`);
       return;
     }
     if (formData.hasSouvenirToExchange && !formData.souvenirLink.trim()) {
@@ -174,6 +215,16 @@ export function SurveyBookSection({ quizScore, onUnlockStamp }: SurveyBookSectio
 
     // Try direct email sending via FormSubmit to arinast101@gmail.com
     try {
+      const recLabel =
+        payload.recommendationType === 'game'
+          ? 'Игра'
+          : payload.recommendationType === 'movie'
+          ? 'Фильм'
+          : payload.recommendationType === 'series'
+          ? 'Сериал'
+          : payload.recommendationType === 'article'
+          ? 'Статья'
+          : 'Книга';
       fetch('https://formsubmit.co/ajax/arinast101@gmail.com', {
         method: 'POST',
         headers: {
@@ -190,7 +241,7 @@ export function SurveyBookSection({ quizScore, onUnlockStamp }: SurveyBookSectio
           Интересы: payload.interests?.join(', ') || 'Не выбраны',
           Сувенир_на_обмен: payload.hasSouvenirToExchange ? payload.souvenirLink : 'Нет',
           Рекомендация: payload.lovesReading
-            ? `${payload.recommendationType}: "${currentTitle}" (автор/создатель: ${payload.recommendationCreator})`
+            ? `${recLabel}: "${currentTitle}" (автор/создатель/студия: ${payload.recommendationCreator || '-'})`
             : 'Только теплое послание',
           Отзыв: payload.recommendationReview || '-',
           Любимая_цитата: payload.favoriteQuote || '-',
@@ -490,17 +541,18 @@ export function SurveyBookSection({ quizScore, onUnlockStamp }: SurveyBookSectio
                       3. Посоветуй мне что-нибудь классное! ✨
                     </h3>
                     <p className="text-xs text-amber-900 font-sans-ui">
-                      Арина обожает читать новеллы, смотреть дорамы и узнавать новое. Выбери удобный формат рекомендации:
+                      Арина обожает читать новеллы, смотреть дорамы, играть в игры и узнавать новое. Выбери формат рекомендации:
                     </p>
                   </div>
                 </div>
 
                 {/* Recommendation Type Switcher */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                   {[
                     { id: 'book', label: 'Книга / Новелла', icon: '📖' },
                     { id: 'movie', label: 'Фильм / Кино', icon: '🍿' },
                     { id: 'series', label: 'Сериал / Дорама', icon: '📺' },
+                    { id: 'game', label: 'Видеоигра', icon: '🎮' },
                     { id: 'article', label: 'Статья / Лонгрид', icon: '📰' },
                   ].map((t) => {
                     const isSelected = formData.recommendationType === t.id;
@@ -509,14 +561,14 @@ export function SurveyBookSection({ quizScore, onUnlockStamp }: SurveyBookSectio
                         type="button"
                         key={t.id}
                         onClick={() => handleRecTypeChange(t.id as any)}
-                        className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
+                        className={`px-2.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
                           isSelected
                             ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
                             : 'bg-white text-stone-700 border-amber-200 hover:bg-amber-100/60'
                         }`}
                       >
                         <span>{t.icon}</span>
-                        <span>{t.label}</span>
+                        <span className="truncate">{t.label}</span>
                       </button>
                     );
                   })}
@@ -525,7 +577,9 @@ export function SurveyBookSection({ quizScore, onUnlockStamp }: SurveyBookSectio
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                   <div>
                     <label className="block text-xs font-semibold text-stone-800 mb-1 font-sans-ui">
-                      {formData.recommendationType === 'movie'
+                      {formData.recommendationType === 'game'
+                        ? 'Название видеоигры *'
+                        : formData.recommendationType === 'movie'
                         ? 'Название фильма *'
                         : formData.recommendationType === 'series'
                         ? 'Название сериала или дорамы *'
@@ -545,7 +599,9 @@ export function SurveyBookSection({ quizScore, onUnlockStamp }: SurveyBookSectio
                         })
                       }
                       placeholder={
-                        formData.recommendationType === 'movie'
+                        formData.recommendationType === 'game'
+                          ? 'Например: Genshin Impact / The Witcher 3 / Detroit / Hollow Knight'
+                          : formData.recommendationType === 'movie'
                           ? 'Например: Интерстеллар / Унесённые призраками'
                           : formData.recommendationType === 'series'
                           ? 'Например: Счастье / Необычный адвокат У Ён У / Винченцо'
@@ -559,7 +615,9 @@ export function SurveyBookSection({ quizScore, onUnlockStamp }: SurveyBookSectio
 
                   <div>
                     <label className="block text-xs font-semibold text-stone-800 mb-1 font-sans-ui">
-                      {formData.recommendationType === 'movie'
+                      {formData.recommendationType === 'game'
+                        ? 'Разработчик, студия или платформа'
+                        : formData.recommendationType === 'movie'
                         ? 'Режиссёр или страна'
                         : formData.recommendationType === 'series'
                         ? 'Страна / Актёры / Студия'
@@ -578,7 +636,9 @@ export function SurveyBookSection({ quizScore, onUnlockStamp }: SurveyBookSectio
                         })
                       }
                       placeholder={
-                        formData.recommendationType === 'movie' || formData.recommendationType === 'series'
+                        formData.recommendationType === 'game'
+                          ? 'Например: miHoYo / Team Cherry / CD Projekt / PC, Консоли'
+                          : formData.recommendationType === 'movie' || formData.recommendationType === 'series'
                           ? 'Например: Кристофер Нолан / Южная Корея'
                           : formData.recommendationType === 'article'
                           ? 'Например: Habr / Nature / Telegram'
@@ -591,7 +651,9 @@ export function SurveyBookSection({ quizScore, onUnlockStamp }: SurveyBookSectio
 
                 <div>
                   <label className="block text-xs font-semibold text-stone-800 mb-1 font-sans-ui">
-                    {formData.recommendationType === 'movie' || formData.recommendationType === 'series'
+                    {formData.recommendationType === 'game'
+                      ? 'О чем игра, какой геймплей или сюжет? Почему стоит поиграть? *'
+                      : formData.recommendationType === 'movie' || formData.recommendationType === 'series'
                       ? 'О чем сюжет и почему это стоит посмотреть? Чем зацепило? *'
                       : formData.recommendationType === 'article'
                       ? 'О чем этот материал и какая ключевая мысль тебя зацепила? *'
@@ -608,7 +670,11 @@ export function SurveyBookSection({ quizScore, onUnlockStamp }: SurveyBookSectio
                         bookReview: e.target.value,
                       })
                     }
-                    placeholder="Поделись своими впечатлениями: атмосфера, любимые моменты, эмоции или неожиданные повороты..."
+                    placeholder={
+                      formData.recommendationType === 'game'
+                        ? 'Поделись впечатлениями: атмосфера, геймплейные механики, музыка, визуал или сюжетные повороты...'
+                        : 'Поделись своими впечатлениями: атмосфера, любимые моменты, эмоции или неожиданные повороты...'
+                    }
                     className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 text-stone-800 text-sm focus:outline-hidden focus:border-amber-700 focus:ring-1 focus:ring-amber-700 bg-white font-sans-ui"
                   />
                 </div>
@@ -616,40 +682,56 @@ export function SurveyBookSection({ quizScore, onUnlockStamp }: SurveyBookSectio
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-stone-800 mb-1 font-sans-ui">
-                      Любимая мысль, цитата или сцена (если помнишь)
+                      {formData.recommendationType === 'game'
+                        ? 'Любимый персонаж, фраза или яркий момент'
+                        : 'Любимая мысль, цитата или сцена (если помнишь)'}
                     </label>
                     <input
                       type="text"
                       value={formData.favoriteQuote}
                       onChange={(e) => setFormData({ ...formData, favoriteQuote: e.target.value })}
-                      placeholder="«...»"
+                      placeholder={
+                        formData.recommendationType === 'game'
+                          ? 'Например: Саундтрек, любимый босс или цитата героя'
+                          : '«...»'
+                      }
                       className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 text-stone-800 text-sm focus:outline-hidden focus:border-amber-700 focus:ring-1 focus:ring-amber-700 bg-white font-sans-ui"
                     />
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-stone-800 mb-1 font-sans-ui">
-                      Кому бы ты советовал(а) её прочитать?
+                      {formData.recommendationType === 'game'
+                        ? 'Кому бы ты посоветовал(а) сыграть в эту игру?'
+                        : formData.recommendationType === 'movie' || formData.recommendationType === 'series'
+                        ? 'Кому ты особенно советуешь это посмотреть?'
+                        : formData.recommendationType === 'article'
+                        ? 'Кому стоит прочитать этот материал?'
+                        : 'Кому бы ты советовал(а) её прочитать?'}
                     </label>
                     <input
                       type="text"
                       value={formData.recommendationTarget}
                       onChange={(e) => setFormData({ ...formData, recommendationTarget: e.target.value })}
-                      placeholder="Всем, кто ищет вдохновение / мечтателям"
+                      placeholder={
+                        formData.recommendationType === 'game'
+                          ? 'Любителям хорошего сюжета / тем, кто любит уютные игры'
+                          : 'Всем, кто ищет вдохновение / мечтателям'
+                      }
                       className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 text-stone-800 text-sm focus:outline-hidden focus:border-amber-700 focus:ring-1 focus:ring-amber-700 bg-white font-sans-ui"
                     />
                   </div>
                 </div>
               </motion.div>
             ) : (
-              <div className="p-4 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-600 font-sans-ui flex items-center justify-between">
-                <span>Ты не выбрал(а) чтение среди увлечений. Хочешь порекомендовать книгу?</span>
+              <div className="p-4 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-600 font-sans-ui flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <span>В твоих интересах не выбраны медиа (кино, книги, сериалы, игры). Хочешь всё равно порекомендовать Арине что-нибудь классное?</span>
                 <button
                   type="button"
-                  onClick={() => toggleInterest('reading')}
-                  className="px-3 py-1 bg-amber-100 text-amber-900 rounded-lg font-bold hover:bg-amber-200 cursor-pointer"
+                  onClick={() => setFormData((prev) => ({ ...prev, lovesReading: true }))}
+                  className="px-3.5 py-1.5 bg-amber-100 text-amber-900 rounded-lg font-bold hover:bg-amber-200 cursor-pointer text-xs whitespace-nowrap"
                 >
-                  + Добавить книгу
+                  + Посоветовать что-то классное ✨
                 </button>
               </div>
             )}
