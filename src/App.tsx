@@ -17,14 +17,38 @@ import { INITIAL_STAMPS } from './data/russiaFacts';
 import { PostcardStamp } from './types';
 
 export default function App() {
-  const [stamps, setStamps] = useState<PostcardStamp[]>(INITIAL_STAMPS);
+  const [stamps, setStamps] = useState<PostcardStamp[]>(() => {
+    try {
+      const saved = localStorage.getItem('mfm_unlocked_stamps');
+      if (saved) {
+        const unlockedIds: string[] = JSON.parse(saved);
+        if (Array.isArray(unlockedIds) && unlockedIds.length > 0) {
+          return INITIAL_STAMPS.map((s) => ({
+            ...s,
+            unlocked: s.unlocked || unlockedIds.includes(s.id),
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn('Could not read stamps from localStorage', e);
+    }
+    return INITIAL_STAMPS;
+  });
+
   const [quizScore, setQuizScore] = useState<number | null>(null);
   const [isMailboxOpen, setIsMailboxOpen] = useState(false);
 
   const handleUnlockStamp = (id: string) => {
-    setStamps((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, unlocked: true } : s))
-    );
+    setStamps((prev) => {
+      const updated = prev.map((s) => (s.id === id ? { ...s, unlocked: true } : s));
+      try {
+        const unlockedIds = updated.filter((s) => s.unlocked).map((s) => s.id);
+        localStorage.setItem('mfm_unlocked_stamps', JSON.stringify(unlockedIds));
+      } catch (e) {
+        console.warn('Could not save stamps to localStorage', e);
+      }
+      return updated;
+    });
   };
 
   const unlockedCount = stamps.filter((s) => s.unlocked).length;

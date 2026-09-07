@@ -77,7 +77,9 @@ export function HeaderNavbar({ onOpenMailbox, stampsCount, totalStamps }: Header
           >
             <Compass className="w-3.5 h-3.5 text-amber-700 shrink-0" />
             <span className="hidden 2xl:inline">Марки: </span>
-            <span>{stampsCount}/{totalStamps}</span>
+            <span key={`nb-cnt-${stampsCount}`} className="notranslate font-mono font-bold" translate="no">
+              {stampsCount}/{totalStamps}
+            </span>
           </a>
 
           {/* Ambient BGM toggle */}

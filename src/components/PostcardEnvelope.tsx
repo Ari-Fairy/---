@@ -11,9 +11,14 @@ interface PostcardEnvelopeProps {
 }
 
 export function PostcardEnvelope({ stamps, onUnlockStamp }: PostcardEnvelopeProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const isEnvelopeAlreadyOpened = stamps.some((s) => s.id === 'stamp-envelope' && s.unlocked);
+  const [isOpen, setIsOpen] = useState(() => isEnvelopeAlreadyOpened);
   const [isFlipped, setIsFlipped] = useState(false);
-  const [selectedStamp, setSelectedStamp] = useState<PostcardStamp | null>(null);
+  const [selectedStampId, setSelectedStampId] = useState<string | null>(null);
+
+  const selectedStamp = selectedStampId
+    ? stamps.find((s) => s.id === selectedStampId) || null
+    : null;
 
   const handleOpenEnvelope = () => {
     if (!isOpen) {
@@ -32,7 +37,7 @@ export function PostcardEnvelope({ stamps, onUnlockStamp }: PostcardEnvelopeProp
 
   const handleStampClick = (stamp: PostcardStamp) => {
     playStampSound();
-    setSelectedStamp(stamp);
+    setSelectedStampId(stamp.id);
   };
 
   return (
@@ -303,8 +308,15 @@ export function PostcardEnvelope({ stamps, onUnlockStamp }: PostcardEnvelopeProp
                         Нажимайте на марки, чтобы узнать скрытые культурные истории и собрать всю серию!
                       </p>
                     </div>
-                    <div className="px-3 py-1 bg-amber-100 text-amber-900 rounded-full text-xs font-bold border border-amber-300">
-                      Открыто: {stamps.filter((s) => s.unlocked).length}/{stamps.length}
+                    <div className="px-3 py-1 bg-amber-100 text-amber-900 rounded-full text-xs font-bold border border-amber-300 flex items-center gap-1">
+                      <span>Открыто:</span>
+                      <span
+                        key={`passport-unlocked-${stamps.filter((s) => s.unlocked).length}`}
+                        className="notranslate font-mono font-bold"
+                        translate="no"
+                      >
+                        {stamps.filter((s) => s.unlocked).length}/{stamps.length}
+                      </span>
                     </div>
                   </div>
 
@@ -349,6 +361,7 @@ export function PostcardEnvelope({ stamps, onUnlockStamp }: PostcardEnvelopeProp
                   {/* Selected stamp info & quest hint */}
                   {selectedStamp && (
                     <motion.div
+                      key={`stamp-detail-${selectedStamp.id}`}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       className={`p-4 rounded-xl border text-left font-sans-ui ${
@@ -360,15 +373,16 @@ export function PostcardEnvelope({ stamps, onUnlockStamp }: PostcardEnvelopeProp
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex items-center gap-2 font-bold text-sm text-stone-900">
                           {selectedStamp.unlocked ? (
-                            <CheckCircle className="w-4 h-4 text-emerald-600" />
+                            <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
                           ) : (
-                            <span className="text-amber-700">🔒</span>
+                            <span className="text-amber-700 shrink-0">🔒</span>
                           )}
-                          <span>
+                          <span key={`name-${selectedStamp.id}`}>
                             Марка «{selectedStamp.name}»: {selectedStamp.subtitle}
                           </span>
                         </div>
                         <span
+                          key={`status-badge-${selectedStamp.id}-${selectedStamp.unlocked}`}
                           className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
                             selectedStamp.unlocked
                               ? 'bg-emerald-200 text-emerald-900'
@@ -380,11 +394,14 @@ export function PostcardEnvelope({ stamps, onUnlockStamp }: PostcardEnvelopeProp
                       </div>
 
                       {selectedStamp.unlocked ? (
-                        <p className="mt-2 text-xs text-stone-700 leading-relaxed">
+                        <p
+                          key={`desc-${selectedStamp.id}`}
+                          className="mt-2 text-xs text-stone-700 leading-relaxed"
+                        >
                           {selectedStamp.description}
                         </p>
                       ) : (
-                        <div className="mt-2 space-y-2">
+                        <div key={`quest-${selectedStamp.id}`} className="mt-2 space-y-2">
                           <p className="text-xs text-stone-600">
                             <strong>Как получить:</strong> {selectedStamp.questHint}
                           </p>
