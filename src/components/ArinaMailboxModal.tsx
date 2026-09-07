@@ -311,7 +311,7 @@ export function ArinaMailboxModal({ isOpen, onClose }: ArinaMailboxModalProps) {
                         {item.quizScore !== null && (
                           <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[10px] font-bold flex items-center gap-1">
                             <Award className="w-3 h-3" />
-                            {item.quizScore}/5 в викторине
+                            {item.quizScore}/6 в викторине
                           </span>
                         )}
                       </div>

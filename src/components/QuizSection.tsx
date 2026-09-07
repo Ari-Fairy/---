@@ -38,13 +38,12 @@ export function QuizSection({ onUnlockStamp, onScoreUpdated }: QuizSectionProps)
       setCurrentIndex((prev) => prev + 1);
       setSelectedOption(null);
     } else {
-      // Quiz completed!
-      const totalCorrect = Object.entries(answers).reduce((acc, [qId, ans]) => {
-        const q = QUIZ_QUESTIONS.find((item) => item.id === Number(qId));
-        return q && q.correctIndex === ans ? acc + 1 : acc;
+      // Quiz completed! Calculate strictly by verifying every question in QUIZ_QUESTIONS
+      const currentAnswers = { ...answers, ...(selectedOption !== null ? { [currentQ.id]: selectedOption } : {}) };
+      const finalScore = QUIZ_QUESTIONS.reduce((acc, q) => {
+        return currentAnswers[q.id] === q.correctIndex ? acc + 1 : acc;
       }, 0);
 
-      const finalScore = selectedOption === currentQ.correctIndex ? totalCorrect + 1 : totalCorrect;
       setScore(finalScore);
       setIsCompleted(true);
       onScoreUpdated(finalScore);
@@ -82,7 +81,7 @@ export function QuizSection({ onUnlockStamp, onScoreUpdated }: QuizSectionProps)
             Викторина: Что ты узнал о России?
           </h2>
           <p className="mt-3 text-stone-600 text-base sm:text-lg font-sans-ui">
-            5 интересных вопросов о культуре, чае, масштабе и сувенире Арины. Проверь себя и получи памятный диплом участника!
+            6 интересных вопросов о культуре, традициях чая, масштабе, космосе, наукограде Реутов и сувенире Арины. Проверь себя и получи памятный диплом участника!
           </p>
         </div>
 
@@ -260,9 +259,11 @@ export function QuizSection({ onUnlockStamp, onScoreUpdated }: QuizSectionProps)
                 Правильно: <span className="text-emerald-700 font-bold">{score}</span> из <span className="text-stone-700 font-bold">{QUIZ_QUESTIONS.length}</span> вопросов!
               </p>
               <p className="text-xs text-stone-600 leading-relaxed">
-                {score >= 4
+                {score >= 5
                   ? 'Потрясающе! Ты великолепно чувствуешь культуру и открыт новому знанию!'
-                  : 'Отличный результат! Теперь Россия и её традиции стали для тебя ближе.'}
+                  : score >= 3
+                  ? 'Отличный результат! Теперь Россия и её традиции стали для тебя ближе.'
+                  : 'Спасибо за участие! Здорово, что ты интересуешься новой культурой и открыт дружбе!'}
               </p>
             </div>
 

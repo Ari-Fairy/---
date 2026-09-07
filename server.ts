@@ -154,7 +154,7 @@ ${newEntry.favoriteQuote || '-'}
 Кому рекомендует: ${newEntry.recommendationTarget || '-'}
 ` : 'Человек отметил, что книги пока не в приоритете, но передает теплый привет!'}
 
-Результат викторины о России: ${newEntry.quizScore !== null ? `${newEntry.quizScore}/5 баллов` : 'Не проходил'}
+Результат викторины о России: ${newEntry.quizScore !== null ? `${newEntry.quizScore}/6 баллов` : 'Не проходил'}
 Дата отправки: ${newEntry.createdAtFormatted}
         `.trim();
 

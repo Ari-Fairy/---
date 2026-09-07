@@ -246,7 +246,7 @@ export function SurveyBookSection({ quizScore, onUnlockStamp }: SurveyBookSectio
           Отзыв: payload.recommendationReview || '-',
           Любимая_цитата: payload.favoriteQuote || '-',
           Кому_рекомендует: payload.recommendationTarget || '-',
-          Баллы_викторины: quizScore !== null ? `${quizScore}/5` : 'Не проходил',
+          Баллы_викторины: quizScore !== null ? `${quizScore}/6` : 'Не проходил',
         }),
       }).catch((e) => console.log('Formsubmit background status:', e));
     } catch (e) {
