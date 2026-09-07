@@ -223,6 +223,9 @@ app.delete('/api/submissions/:id', (req, res) => {
   }
 });
 
+// Serve static files from public directory
+app.use(express.static(path.join(process.cwd(), 'public')));
+
 // Setup Vite or static serving
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {

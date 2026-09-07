@@ -97,7 +97,48 @@
     <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async defer></script>
 
     <!-- Background Musicbox Audio Element -->
-    <audio id="bgm-musicbox" src="/audio/musicbox.wav" loop playsinline preload="auto"></audio>
+    <audio id="bgm-musicbox" loop playsinline preload="auto">
+      <source src="/audio/musicbox.mp3" type="audio/mpeg">
+      <source src="/audio/musicbox.wav" type="audio/wav">
+    </audio>
+    <script type="text/javascript">
+      (function() {
+        var audio = document.getElementById('bgm-musicbox');
+        if (!audio) return;
+        audio.volume = 0.35;
+
+        var isUserMuted = false;
+        try {
+          isUserMuted = localStorage.getItem('mfm_bgm_muted') === 'true';
+        } catch (e) {}
+
+        if (!isUserMuted) {
+          var p = audio.play();
+          if (p !== undefined) {
+            p.catch(function() {
+              var events = ['pointerdown', 'touchstart', 'touchend', 'mousedown', 'mouseup', 'click', 'keydown', 'scroll', 'wheel'];
+              var triggerPlay = function() {
+                var muted = false;
+                try { muted = localStorage.getItem('mfm_bgm_muted') === 'true'; } catch(e) {}
+                if (!muted && audio.paused) {
+                  audio.play().then(function() {
+                    events.forEach(function(ev) {
+                      window.removeEventListener(ev, triggerPlay, true);
+                      document.removeEventListener(ev, triggerPlay, true);
+                    });
+                  }).catch(function() {});
+                }
+              };
+
+              events.forEach(function(ev) {
+                window.addEventListener(ev, triggerPlay, { capture: true, passive: true });
+                document.addEventListener(ev, triggerPlay, { capture: true, passive: true });
+              });
+            });
+          }
+        }
+      })();
+    </script>
 
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

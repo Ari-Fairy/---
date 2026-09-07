@@ -28,12 +28,12 @@ export function getAudioContext(): AudioContext | null {
   return audioCtx;
 }
 
-function getBgmAudio(): HTMLAudioElement | null {
+export function getBgmAudio(): HTMLAudioElement | null {
   if (typeof window === 'undefined') return null;
   if (!bgmAudioElement) {
     bgmAudioElement = document.getElementById('bgm-musicbox') as HTMLAudioElement | null;
     if (!bgmAudioElement) {
-      bgmAudioElement = new Audio('/audio/musicbox.wav');
+      bgmAudioElement = new Audio('/audio/musicbox.mp3');
       bgmAudioElement.id = 'bgm-musicbox';
       bgmAudioElement.loop = true;
       bgmAudioElement.preload = 'auto';
@@ -52,8 +52,9 @@ function playBgm() {
   audio.volume = 0.35;
   const p = audio.play();
   if (p !== undefined) {
-    p.catch(() => {
-      // Browser autoplay policy held audio - register one-touch unblock
+    p.then(() => {
+      notifyState(true);
+    }).catch(() => {
       setupGestureUnlock();
     });
   }
@@ -70,6 +71,18 @@ function setupGestureUnlock() {
   if (gestureUnlockRegistered || typeof window === 'undefined') return;
   gestureUnlockRegistered = true;
 
+  const events = [
+    'pointerdown',
+    'touchstart',
+    'touchend',
+    'mousedown',
+    'mouseup',
+    'click',
+    'keydown',
+    'scroll',
+    'wheel'
+  ];
+
   const onUserTouch = () => {
     if (!isUserMuted) {
       const audio = getBgmAudio();
@@ -78,10 +91,11 @@ function setupGestureUnlock() {
         const p = audio.play();
         if (p !== undefined) {
           p.then(() => {
+            notifyState(true);
             cleanup();
           }).catch(() => {});
         }
-      } else {
+      } else if (audio && !audio.paused) {
         cleanup();
       }
     }
@@ -89,16 +103,15 @@ function setupGestureUnlock() {
 
   const cleanup = () => {
     events.forEach((evt) => {
-      window.removeEventListener(evt, onUserTouch);
-      document.removeEventListener(evt, onUserTouch);
+      window.removeEventListener(evt, onUserTouch, true);
+      document.removeEventListener(evt, onUserTouch, true);
     });
     gestureUnlockRegistered = false;
   };
 
-  const events = ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown'];
   events.forEach((evt) => {
-    window.addEventListener(evt, onUserTouch, { passive: true });
-    document.addEventListener(evt, onUserTouch, { passive: true });
+    window.addEventListener(evt, onUserTouch, { capture: true, passive: true });
+    document.addEventListener(evt, onUserTouch, { capture: true, passive: true });
   });
 }
 
@@ -112,7 +125,7 @@ function notifyState(playing: boolean) {
 
 export function subscribeBgmState(listener: (playing: boolean) => void): () => void {
   stateListeners.push(listener);
-  listener(!isUserMuted);
+  listener(getIsBgmPlaying());
   return () => {
     stateListeners = stateListeners.filter((l) => l !== listener);
   };
@@ -123,11 +136,13 @@ export function subscribeAudioActiveState(listener: (active: boolean) => void): 
 }
 
 export function isAudioActuallyRunning(): boolean {
-  return !isUserMuted;
+  return getIsBgmPlaying();
 }
 
 export function getIsBgmPlaying(): boolean {
-  return !isUserMuted;
+  if (isUserMuted) return false;
+  const audio = getBgmAudio();
+  return audio ? !audio.paused : true;
 }
 
 export function ensurePlaybackLoop(): void {
@@ -156,12 +171,15 @@ export function stopAmbientBgm(): void {
 }
 
 export function toggleAmbientBgm(): boolean {
-  if (isUserMuted) {
-    startAmbientBgm();
-    return true;
-  } else {
+  const audio = getBgmAudio();
+  const isActuallyPlaying = audio ? (!audio.paused && audio.currentTime > 0) : false;
+
+  if (isActuallyPlaying) {
     stopAmbientBgm();
     return false;
+  } else {
+    startAmbientBgm();
+    return true;
   }
 }
 
@@ -265,8 +283,10 @@ export function playVictorySound() {
   } catch {}
 }
 
-// Initial auto-start and tab visibility management
+// Initial auto-start and interaction hooks
 if (typeof window !== 'undefined') {
+  setupGestureUnlock();
+
   const initAudio = () => {
     if (!isUserMuted) {
       playBgm();
@@ -280,12 +300,29 @@ if (typeof window !== 'undefined') {
     window.addEventListener('DOMContentLoaded', initAudio, { once: true });
   }
 
+  // Hook directly into audio element state changes
+  const bindAudioEvents = () => {
+    const audio = getBgmAudio();
+    if (audio) {
+      audio.addEventListener('play', () => notifyState(true));
+      audio.addEventListener('pause', () => {
+        if (isUserMuted) notifyState(false);
+      });
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bindAudioEvents, { once: true });
+  } else {
+    bindAudioEvents();
+  }
+
   // Resume when returning to the tab
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && !isUserMuted) {
       const audio = getBgmAudio();
       if (audio && audio.paused) {
-        audio.play().catch(() => {});
+        audio.play().then(() => notifyState(true)).catch(() => {});
       }
     }
   });
