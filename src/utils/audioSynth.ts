@@ -1,19 +1,26 @@
 // Web Audio API procedural sound synthesizer (100% self-contained, no external assets needed)
 
 let audioCtx: AudioContext | null = null;
-let bgmInterval: any = null;
-let isBgmPlaying = false;
+let bgmInterval: ReturnType<typeof setInterval> | null = null;
+let isBgmPlaying = true;
+let isBgmDesired = true;
 
-function getAudioContext(): AudioContext | null {
+// Sound is ALWAYS enabled by default on site entry as requested
+if (typeof window !== 'undefined') {
+  try {
+    localStorage.removeItem('mfm_bgm_muted');
+  } catch {
+    // ignore
+  }
+}
+
+export function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   if (!audioCtx) {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (AudioContextClass) {
       audioCtx = new AudioContextClass();
     }
-  }
-  if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume();
   }
   return audioCtx;
 }
@@ -23,6 +30,9 @@ export function playSealBreakSound() {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
     const now = ctx.currentTime;
 
     // Subtle paper crinkle / chime
@@ -41,7 +51,7 @@ export function playSealBreakSound() {
 
     osc.start(now);
     osc.stop(now + 0.35);
-  } catch (e) {
+  } catch {
     // Ignore audio restrictions
   }
 }
@@ -51,6 +61,9 @@ export function playStampSound() {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
     const now = ctx.currentTime;
 
     const osc = ctx.createOscillator();
@@ -68,7 +81,7 @@ export function playStampSound() {
 
     osc.start(now);
     osc.stop(now + 0.2);
-  } catch (e) {
+  } catch {
     // Ignore
   }
 }
@@ -78,6 +91,9 @@ export function playTeaSound() {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
     const now = ctx.currentTime;
 
     [440, 554, 659, 880].forEach((freq, i) => {
@@ -96,7 +112,7 @@ export function playTeaSound() {
       osc.start(now + i * 0.08);
       osc.stop(now + i * 0.08 + 0.25);
     });
-  } catch (e) {
+  } catch {
     // Ignore
   }
 }
@@ -106,6 +122,9 @@ export function playVictorySound() {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
     const now = ctx.currentTime;
 
     const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
@@ -125,18 +144,30 @@ export function playVictorySound() {
       osc.start(now + idx * 0.12);
       osc.stop(now + idx * 0.12 + 0.4);
     });
-  } catch (e) {
+  } catch {
     // Ignore
   }
 }
 
-// Gentle ambient music box loop
+// Gentle ambient music box loop (Russian folk music box harmony)
 const PENTATONIC_MELODY = [
-  523.25, 587.33, 659.25, 783.99, 880.00,
-  1046.50, 880.00, 783.99, 659.25, 587.33
+  523.25, // C5
+  587.33, // D5
+  659.25, // E5
+  783.99, // G5
+  880.00, // A5
+  1046.50, // C6
+  880.00,  // A5
+  783.99,  // G5
+  659.25,  // E5
+  587.33,  // D5
+  659.25,  // E5
+  523.25   // C5
 ];
 
+let noteIndex = 0;
 let stateListeners: Array<(playing: boolean) => void> = [];
+let audioActiveListeners: Array<(active: boolean) => void> = [];
 
 export function subscribeBgmState(listener: (playing: boolean) => void): () => void {
   stateListeners.push(listener);
@@ -146,10 +177,31 @@ export function subscribeBgmState(listener: (playing: boolean) => void): () => v
   };
 }
 
+export function subscribeAudioActiveState(listener: (active: boolean) => void): () => void {
+  audioActiveListeners.push(listener);
+  listener(isAudioActuallyRunning());
+  return () => {
+    audioActiveListeners = audioActiveListeners.filter((l) => l !== listener);
+  };
+}
+
 function notifyState(playing: boolean) {
+  isBgmPlaying = playing;
   stateListeners.forEach((l) => {
     try {
       l(playing);
+    } catch {
+      // ignore
+    }
+  });
+  notifyAudioActiveState();
+}
+
+function notifyAudioActiveState() {
+  const active = isAudioActuallyRunning();
+  audioActiveListeners.forEach((l) => {
+    try {
+      l(active);
     } catch {
       // ignore
     }
@@ -160,64 +212,130 @@ export function getIsBgmPlaying(): boolean {
   return isBgmPlaying;
 }
 
-export function startAmbientBgm(): boolean {
+export function isAudioActuallyRunning(): boolean {
+  return isBgmPlaying && isBgmDesired && audioCtx !== null && audioCtx.state === 'running';
+}
+
+function playSingleChime(ctx: AudioContext, freq: number) {
   try {
-    if (isBgmPlaying) return true;
-    const ctx = getAudioContext();
-    if (!ctx) return false;
+    const now = ctx.currentTime;
 
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
+    // Primary fundamental bell
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now);
 
-    isBgmPlaying = true;
-    let noteIndex = 0;
+    // Warm bell-envelope
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.05, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.35);
 
-    const playNextNote = () => {
-      if (!isBgmPlaying || !ctx) return;
-      if (ctx.state === 'suspended') {
-        ctx.resume().catch(() => {});
-      }
-      const now = ctx.currentTime;
-      const freq = PENTATONIC_MELODY[noteIndex % PENTATONIC_MELODY.length];
-      noteIndex++;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
 
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
+    osc.start(now);
+    osc.stop(now + 1.35);
 
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, now);
+    // Subtle soft octave overtone for music-box sparkle
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(freq * 2, now);
 
-      gain.gain.setValueAtTime(0.04, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+    gain2.gain.setValueAtTime(0.0005, now);
+    gain2.gain.linearRampToValueAtTime(0.015, now + 0.015);
+    gain2.gain.exponentialRampToValueAtTime(0.00005, now + 0.5);
 
-      osc.connect(gain);
-      gain.connect(ctx.destination);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
 
-      osc.start(now);
-      osc.stop(now + 1.2);
-    };
-
-    playNextNote();
-    bgmInterval = setInterval(playNextNote, 1400);
-    notifyState(true);
-    return true;
-  } catch (e) {
-    return false;
+    osc2.start(now);
+    osc2.stop(now + 0.5);
+  } catch {
+    // ignore
   }
 }
 
-export function stopAmbientBgm(): void {
+export function ensurePlaybackLoop() {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
   if (bgmInterval) {
     clearInterval(bgmInterval);
     bgmInterval = null;
   }
+
+  notifyState(true);
+
+  const step = () => {
+    if (!isBgmDesired) {
+      stopAmbientBgm();
+      return;
+    }
+    const currentCtx = getAudioContext();
+    if (!currentCtx) return;
+
+    if (currentCtx.state === 'suspended') {
+      currentCtx.resume().then(() => {
+        if (currentCtx.state === 'running') {
+          notifyAudioActiveState();
+        }
+      }).catch(() => {});
+      // Wait until context is running before playing notes
+      return;
+    }
+
+    notifyAudioActiveState();
+    const freq = PENTATONIC_MELODY[noteIndex % PENTATONIC_MELODY.length];
+    noteIndex++;
+    playSingleChime(currentCtx, freq);
+  };
+
+  // If already running, play initial note right away
+  if (ctx.state === 'running') {
+    step();
+  }
+  bgmInterval = setInterval(step, 1350);
+}
+
+export function startAmbientBgm(): boolean {
+  isBgmDesired = true;
+  isBgmPlaying = true;
+  try {
+    localStorage.removeItem('mfm_bgm_muted');
+  } catch {}
+
+  const ctx = getAudioContext();
+  if (!ctx) return false;
+
+  if (ctx.state === 'suspended') {
+    ctx.resume().then(() => {
+      ensurePlaybackLoop();
+      notifyAudioActiveState();
+    }).catch(() => {});
+  }
+
+  ensurePlaybackLoop();
+  return true;
+}
+
+export function stopAmbientBgm(): void {
+  isBgmDesired = false;
   isBgmPlaying = false;
+  try {
+    localStorage.setItem('mfm_bgm_muted', 'true');
+  } catch {}
+
+  if (bgmInterval) {
+    clearInterval(bgmInterval);
+    bgmInterval = null;
+  }
   notifyState(false);
 }
 
 export function toggleAmbientBgm(onStateChange?: (playing: boolean) => void): boolean {
-  if (isBgmPlaying) {
+  if (isBgmPlaying && isAudioActuallyRunning()) {
     stopAmbientBgm();
     onStateChange?.(false);
     return false;
@@ -228,25 +346,102 @@ export function toggleAmbientBgm(onStateChange?: (playing: boolean) => void): bo
   }
 }
 
-// Auto-activate audio on first user gesture anywhere on the site to conform to browser policies
+// Auto-activate audio reliably across Chrome, Yandex, mobile, tablets & desktops
 if (typeof window !== 'undefined') {
-  const tryAutoPlay = () => {
-    const started = startAmbientBgm();
-    if (started) {
-      window.removeEventListener('pointerdown', tryAutoPlay);
-      window.removeEventListener('keydown', tryAutoPlay);
-      window.removeEventListener('scroll', tryAutoPlay);
+  const unlockEvents = [
+    'pointerdown',
+    'touchstart',
+    'touchend',
+    'click',
+    'keydown',
+    'scroll'
+  ];
+
+  const handleUserGesture = () => {
+    if (!isBgmDesired) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const detachIfRunning = () => {
+      if (ctx.state === 'running') {
+        unlockEvents.forEach((evt) => {
+          window.removeEventListener(evt, handleUserGesture, true);
+          document.removeEventListener(evt, handleUserGesture, true);
+        });
+        notifyAudioActiveState();
+      }
+    };
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(() => {
+        if (isBgmDesired) {
+          ensurePlaybackLoop();
+        }
+        detachIfRunning();
+      }).catch(() => {});
+    }
+
+    // Silent buffer unlock for mobile iOS Safari and Android Chrome/Yandex
+    try {
+      const buffer = ctx.createBuffer(1, 1, 22050);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.start(0);
+    } catch {}
+
+    if (isBgmDesired) {
+      ensurePlaybackLoop();
+    }
+
+    detachIfRunning();
+  };
+
+  // Register capturing listener on both window and document
+  unlockEvents.forEach((evt) => {
+    window.addEventListener(evt, handleUserGesture, { capture: true, passive: true });
+    document.addEventListener(evt, handleUserGesture, { capture: true, passive: true });
+  });
+
+  // Start playback loop immediately on startup so sound is enabled and running right away
+  ensurePlaybackLoop();
+
+  // Attempt instant unmuted resume on page load
+  const tryImmediateAutoplay = () => {
+    if (!isBgmDesired) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(() => {
+        if (isBgmDesired && ctx.state === 'running') {
+          ensurePlaybackLoop();
+          notifyAudioActiveState();
+        }
+      }).catch(() => {});
+    } else if (ctx.state === 'running') {
+      notifyAudioActiveState();
     }
   };
 
-  window.addEventListener('pointerdown', tryAutoPlay, { passive: true });
-  window.addEventListener('keydown', tryAutoPlay, { passive: true });
-  window.addEventListener('scroll', tryAutoPlay, { passive: true, once: true });
-
-  // Also try immediately in case the environment allows it
-  try {
-    startAmbientBgm();
-  } catch {
-    // browser requires gesture
+  if (document.readyState === 'complete') {
+    tryImmediateAutoplay();
+  } else {
+    window.addEventListener('load', tryImmediateAutoplay, { once: true });
+    window.addEventListener('DOMContentLoaded', tryImmediateAutoplay, { once: true });
   }
+
+  // Restore audio if tab was in background and user returns
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && isBgmDesired) {
+      const ctx = getAudioContext();
+      if (ctx && ctx.state === 'suspended') {
+        ctx.resume().then(() => {
+          if (isBgmDesired) ensurePlaybackLoop();
+          notifyAudioActiveState();
+        }).catch(() => {});
+      }
+    }
+  });
 }
+
