@@ -374,10 +374,11 @@ export function MatryoshkaFigure({
       {/* Interactive Helper Button */}
       <button
         type="button"
+        id="btn-next-matryoshka"
         onClick={onClick}
         className="mt-3 text-xs font-semibold text-rose-700 hover:text-rose-800 font-sans-ui flex items-center gap-1.5 cursor-pointer transition-colors"
       >
-        <span>Раскрыть куклу (слой {layer.layer === 5 ? 1 : layer.layer + 1}/5)</span>
+        <span>Раскрыть матрёшку (кукла {layer.layer} из {totalLayers})</span>
         <span className="text-sm">→</span>
       </button>
     </div>
