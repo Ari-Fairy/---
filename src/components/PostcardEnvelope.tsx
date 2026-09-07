@@ -4,6 +4,9 @@ import { Stamp, Sparkles, RefreshCw, Send, CheckCircle, Gift, Heart, Code2 } fro
 import { PostcardStamp } from '../types';
 import { playSealBreakSound, playStampSound } from '../utils/audioSynth';
 import confetti from 'canvas-confetti';
+import costumeDanceImage from '../assets/images/regenerated_image_1788773329767.png';
+import samovarFeastImage from '../assets/images/regenerated_image_1788773748221.png';
+import winterCelebrationImage from '../assets/images/regenerated_image_1788774416043.png';
 
 interface PostcardEnvelopeProps {
   stamps: PostcardStamp[];
@@ -15,6 +18,37 @@ export function PostcardEnvelope({ stamps, onUnlockStamp }: PostcardEnvelopeProp
   const [isOpen, setIsOpen] = useState(() => isEnvelopeAlreadyOpened);
   const [isFlipped, setIsFlipped] = useState(false);
   const [selectedStampId, setSelectedStampId] = useState<string | null>(null);
+
+  const PHOTO_DATA = {
+    costume: {
+      src: costumeDanceImage,
+      label: 'Наряды',
+      title: 'Русский народный танец и наряды',
+      subtitle: 'Праздничные сарафаны, хоровод и задор народных традиций',
+      quote: '«Русский народный танец и праздничный наряд — это поэзия красок, грация и живая душа народа.»',
+      tag: 'Народный хоровод и красота',
+    },
+    samovar: {
+      src: samovarFeastImage,
+      label: 'Самовар',
+      title: 'Праздничное застолье и самовар',
+      subtitle: 'Богатый стол, угощения, самовар и тёплые улыбки гостей',
+      quote: '«В России гость — всегда праздник, а чай из самовара за щедрым столом согревает сердце.»',
+      tag: 'Русское радушие и щедрый стол',
+    },
+    celebration: {
+      src: winterCelebrationImage,
+      label: 'Гуляния',
+      title: 'Зимние народные гуляния',
+      subtitle: 'Девушки в русских народных костюмах радостно пляшут, идут и улыбаются на заснеженной улице',
+      quote: '«Зимние народные гуляния: задорная пляска на морозном снегу, яркие русские костюмы и искреннее праздничное веселье.»',
+      tag: 'Масленичные гуляния на снегу',
+    },
+  } as const;
+
+  type PhotoKey = keyof typeof PHOTO_DATA;
+  const [activePhoto, setActivePhoto] = useState<PhotoKey>('costume');
+  const currentPhoto = PHOTO_DATA[activePhoto];
 
   const selectedStamp = selectedStampId
     ? stamps.find((s) => s.id === selectedStampId) || null
@@ -135,20 +169,27 @@ export function PostcardEnvelope({ stamps, onUnlockStamp }: PostcardEnvelopeProp
             className="space-y-4"
           >
             {/* Control Bar: Flip & Close */}
-            <div className="flex items-center justify-between px-2">
+            <div className="flex items-center justify-between gap-3 sm:gap-4 px-1 sm:px-2">
               <button
                 id="btn-flip-card"
                 onClick={() => setIsFlipped(!isFlipped)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-semibold shadow-sm transition-all"
+                className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-[11px] sm:text-xs font-semibold shadow-xs sm:shadow-sm transition-all shrink-0 cursor-pointer"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${isFlipped ? 'rotate-180' : ''} transition-transform duration-300`} />
-                <span>{isFlipped ? 'Перевернуть на лицевую сторону' : 'Перевернуть открытку (Коллекция марок)'}</span>
+                <RefreshCw className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${isFlipped ? 'rotate-180' : ''} transition-transform duration-300`} />
+                <span>
+                  <span className="inline sm:hidden">
+                    {isFlipped ? 'На лицевую' : 'Перевернуть (Марки)'}
+                  </span>
+                  <span className="hidden sm:inline">
+                    {isFlipped ? 'Перевернуть на лицевую сторону' : 'Перевернуть открытку (Коллекция марок)'}
+                  </span>
+                </span>
               </button>
 
               <button
                 id="btn-close-envelope"
                 onClick={() => setIsFlipped(false) || setIsOpen(false)}
-                className="text-xs text-stone-500 hover:text-stone-800 underline transition-colors"
+                className="text-[11px] sm:text-xs text-stone-500 hover:text-stone-800 underline transition-colors shrink-0 text-right cursor-pointer"
               >
                 Закрыть обратно в конверт
               </button>
@@ -204,37 +245,78 @@ export function PostcardEnvelope({ stamps, onUnlockStamp }: PostcardEnvelopeProp
                   {/* Main Grid: Postcard Artwork & Handwritten Letter */}
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-6 my-6 text-left items-stretch">
                     
-                    {/* Visual Art Box */}
-                    <div className="md:col-span-5 rounded-xl bg-gradient-to-b from-stone-800 via-stone-900 to-amber-950 p-5 text-white flex flex-col justify-between relative overflow-hidden shadow-inner">
-                      {/* Artistic overlay badges */}
-                      <div className="space-y-2 z-10">
-                        <span className="inline-block px-2.5 py-1 rounded-md bg-white/15 backdrop-blur-xs text-[10px] font-semibold uppercase tracking-wider text-amber-200">
-                          🇷🇺 Россия • Культура и Душа
-                        </span>
-                        <h3 className="font-serif-display text-2xl font-bold leading-tight text-stone-100">
-                          Страна великих просторов, тёплых сердец и глубоких историй
-                        </h3>
-                      </div>
+                    {/* Visual Art Box - Real Russian Cultural Photograph (Full Bleed across entire rectangle) */}
+                    <div className="md:col-span-5 rounded-2xl overflow-hidden relative shadow-lg border border-amber-800/30 flex flex-col justify-between p-4 sm:p-5 text-white min-h-[440px] md:min-h-[560px] h-full group bg-stone-950">
+                      {/* Full-bleed background photograph filling the entire rectangular area */}
+                      <img
+                        key={currentPhoto.src}
+                        src={currentPhoto.src}
+                        alt={currentPhoto.title}
+                        className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
+                        referrerPolicy="no-referrer"
+                      />
 
-                      {/* Symbolic motif */}
-                      <div className="my-6 flex justify-center items-center py-4">
-                        <div className="relative flex items-center justify-center">
-                          <div className="w-24 h-24 rounded-full border border-amber-400/30 flex items-center justify-center">
-                            <span className="text-4xl select-none">🫖</span>
+                      {/* Smooth protective gradients to ensure text readability while leaving image vibrant */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/70 pointer-events-none" />
+                      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80 pointer-events-none" />
+
+                      {/* Top Badges & Photo Switcher */}
+                      <div className="relative z-10 space-y-2.5">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-[11px] font-semibold tracking-wide text-amber-200 border border-white/20 shadow-xs">
+                            🇷🇺 Культура и традиции
+                          </span>
+
+                          {/* Switcher pills */}
+                          <div className="flex bg-black/70 backdrop-blur-md rounded-full p-0.5 border border-white/20 text-[11px] shadow-sm">
+                            {(Object.keys(PHOTO_DATA) as PhotoKey[]).map((key) => {
+                              const item = PHOTO_DATA[key];
+                              const isSelected = activePhoto === key;
+                              return (
+                                <button
+                                  key={key}
+                                  type="button"
+                                  onClick={() => setActivePhoto(key)}
+                                  className={`px-2.5 py-1 rounded-full transition-all cursor-pointer font-medium text-[11px] ${
+                                    isSelected
+                                      ? 'bg-amber-600 text-white font-bold shadow-xs'
+                                      : 'text-stone-300 hover:text-white'
+                                  }`}
+                                  title={item.title}
+                                >
+                                  {item.label}
+                                </button>
+                              );
+                            })}
                           </div>
-                          <span className="absolute text-xl -top-2 -right-2 select-none">❄️</span>
-                          <span className="absolute text-xl -bottom-1 -left-2 select-none">🪆</span>
+                        </div>
+
+                        <div className="bg-black/45 backdrop-blur-sm p-3 rounded-xl border border-white/15 shadow-sm">
+                          <h3 className="font-serif-display text-lg sm:text-xl font-bold leading-snug text-white drop-shadow-sm">
+                            {currentPhoto.title}
+                          </h3>
+                          <p className="text-[12px] text-amber-200/95 font-sans-ui mt-0.5">
+                            {currentPhoto.subtitle}
+                          </p>
                         </div>
                       </div>
 
-                      <div className="z-10 bg-black/40 backdrop-blur-xs p-3 rounded-lg border border-white/10 text-xs text-stone-300">
-                        <p className="italic font-serif-display text-sm text-amber-200">
-                          «В России гость — всегда праздник, а чай из самовара согревает в любую стужу.»
-                        </p>
+                      {/* Bottom Cultural Quote & Tags Card */}
+                      <div className="relative z-10 mt-auto pt-6 space-y-2">
+                        <div className="bg-stone-950/75 backdrop-blur-md p-3.5 rounded-xl border border-white/20 shadow-lg text-xs text-stone-200 space-y-2">
+                          <p className="italic font-serif-display text-sm sm:text-base text-amber-200 leading-snug drop-shadow-xs">
+                            {currentPhoto.quote}
+                          </p>
+                          <div className="flex items-center justify-between pt-1.5 border-t border-white/10 text-[11px] text-stone-300">
+                            <span className="flex items-center gap-1 text-amber-300 font-medium">
+                              ✨ {currentPhoto.tag}
+                            </span>
+                            <span className="font-mono text-[10px] text-stone-300 bg-black/60 px-2 py-0.5 rounded-full border border-white/15">
+                              Россия • МФМ 2026
+                            </span>
+                          </div>
+                        </div>
                       </div>
-
-                      {/* Subtle pattern */}
-                      <div className="absolute inset-0 bg-[radial-gradient(#f59e0b_1px,transparent_1px)] [background-size:16px_16px] opacity-10 pointer-events-none" />
                     </div>
 
                     {/* Handwritten Letter from Arina */}

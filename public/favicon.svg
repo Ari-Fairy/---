@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <!-- Royal festival gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#cf222e" />
+      <stop offset="50%" stop-color="#a6141d" />
+      <stop offset="100%" stop-color="#7a0c12" />
+    </linearGradient>
+
+    <!-- Gold metallic gradient -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffec99" />
+      <stop offset="40%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#b45309" />
+    </linearGradient>
+
+    <!-- Soft glow filter -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#000000" flood-opacity="0.45" />
+    </filter>
+  </defs>
+
+  <!-- Postcard stamp / App icon background with rounded corners -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#bgGrad)" stroke="url(#goldGrad)" stroke-width="2.5" />
+
+  <!-- Decorative perforated stamp dots along border -->
+  <circle cx="10" cy="10" r="1.5" fill="#fef3c7" opacity="0.8" />
+  <circle cx="54" cy="10" r="1.5" fill="#fef3c7" opacity="0.8" />
+  <circle cx="10" cy="54" r="1.5" fill="#fef3c7" opacity="0.8" />
+  <circle cx="54" cy="54" r="1.5" fill="#fef3c7" opacity="0.8" />
+
+  <!-- Matryoshka silhouette group -->
+  <g filter="url(#shadow)">
+    <!-- Lower Body -->
+    <ellipse cx="32" cy="41" rx="17" ry="14" fill="url(#goldGrad)" />
+    <!-- Upper Head -->
+    <ellipse cx="32" cy="24" rx="11" ry="11" fill="url(#goldGrad)" />
+
+    <!-- Traditional Kokoshnik (headdress) crest -->
+    <path d="M 20 22 C 20 12, 32 6, 32 6 C 32 6, 44 12, 44 22 Z" fill="#fde047" stroke="#b45309" stroke-width="1" />
+    <!-- Kokoshnik central jewel -->
+    <circle cx="32" cy="12" r="2" fill="#dc2626" />
+
+    <!-- Matryoshka Headscarf Shawl Inner Face (Light Porcelain) -->
+    <circle cx="32" cy="24" r="7.5" fill="#fffbeb" />
+
+    <!-- Sweet gentle face features -->
+    <!-- Eyes -->
+    <circle cx="29.5" cy="23.5" r="1.1" fill="#451a03" />
+    <circle cx="34.5" cy="23.5" r="1.1" fill="#451a03" />
+    <!-- Blush -->
+    <ellipse cx="28" cy="26" rx="1.5" ry="0.8" fill="#f87171" opacity="0.7" />
+    <ellipse cx="36" cy="26" rx="1.5" ry="0.8" fill="#f87171" opacity="0.7" />
+    <!-- Smile -->
+    <path d="M 30.5 26.5 Q 32 28.5 33.5 26.5" fill="none" stroke="#b91c1c" stroke-width="1" stroke-linecap="round" />
+
+    <!-- Apron Floral Ornament on Body -->
+    <circle cx="32" cy="40.5" r="7.5" fill="#ffffff" stroke="#b45309" stroke-width="0.8" />
+    <!-- Center rose petal flower in apron -->
+    <circle cx="32" cy="40.5" r="3" fill="#dc2626" />
+    <circle cx="32" cy="40.5" r="1.2" fill="#fbbf24" />
+    <!-- Petals -->
+    <circle cx="28.5" cy="40.5" r="1.5" fill="#ef4444" />
+    <circle cx="35.5" cy="40.5" r="1.5" fill="#ef4444" />
+    <circle cx="32" cy="37" r="1.5" fill="#ef4444" />
+    <circle cx="32" cy="44" r="1.5" fill="#ef4444" />
+  </g>
+
+  <!-- Tricolor Ribbon / Friendship Flag at bottom -->
+  <g transform="translate(19, 52)">
+    <rect x="0" y="0" width="8.6" height="3" rx="1" fill="#ffffff" />
+    <rect x="8.6" y="0" width="8.6" height="3" rx="1" fill="#2563eb" />
+    <rect x="17.2" y="0" width="8.6" height="3" rx="1" fill="#dc2626" />
+  </g>
+</svg>
