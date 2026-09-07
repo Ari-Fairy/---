@@ -14,8 +14,15 @@ interface PostcardEnvelopeProps {
 }
 
 export function PostcardEnvelope({ stamps, onUnlockStamp }: PostcardEnvelopeProps) {
-  const isEnvelopeAlreadyOpened = stamps.some((s) => s.id === 'stamp-envelope' && s.unlocked);
-  const [isOpen, setIsOpen] = useState(() => isEnvelopeAlreadyOpened);
+  const [isOpen, setIsOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mfm_envelope_open');
+      if (saved !== null) {
+        return saved === 'true';
+      }
+    } catch {}
+    return false;
+  });
   const [isFlipped, setIsFlipped] = useState(false);
   const [selectedStampId, setSelectedStampId] = useState<string | null>(null);
 
@@ -69,9 +76,20 @@ export function PostcardEnvelope({ stamps, onUnlockStamp }: PostcardEnvelopeProp
         colors: ['#b45309', '#e11d48', '#f59e0b', '#10b981'],
       });
       setIsOpen(true);
+      try {
+        localStorage.setItem('mfm_envelope_open', 'true');
+      } catch {}
       // Automatically unlock commemorative envelope stamp upon breaking the seal
       onUnlockStamp('stamp-envelope');
     }
+  };
+
+  const handleCloseEnvelope = () => {
+    setIsFlipped(false);
+    setIsOpen(false);
+    try {
+      localStorage.setItem('mfm_envelope_open', 'false');
+    } catch {}
   };
 
   const handleStampClick = (stamp: PostcardStamp) => {
@@ -193,7 +211,7 @@ export function PostcardEnvelope({ stamps, onUnlockStamp }: PostcardEnvelopeProp
 
               <button
                 id="btn-close-envelope"
-                onClick={() => setIsFlipped(false) || setIsOpen(false)}
+                onClick={handleCloseEnvelope}
                 className="text-[11px] sm:text-xs text-stone-500 hover:text-stone-800 underline transition-colors shrink-0 text-right cursor-pointer"
               >
                 Закрыть обратно в конверт

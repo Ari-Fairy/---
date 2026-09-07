@@ -1,23 +1,19 @@
-// Web Audio API procedural sound synthesizer (100% self-contained, no external assets needed)
+// Web Audio API procedural sound synthesizer (100% self-contained, zero external audio files needed)
 
 let audioCtx: AudioContext | null = null;
-let bgmInterval: ReturnType<typeof setInterval> | null = null;
 let isBgmPlaying = true;
 let isBgmDesired = true;
-
-// Sound is ALWAYS enabled by default on site entry as requested
-if (typeof window !== 'undefined') {
-  try {
-    localStorage.removeItem('mfm_bgm_muted');
-  } catch {
-    // ignore
-  }
-}
+let schedulerTimer: ReturnType<typeof setInterval> | null = null;
+let nextNoteTime = 0;
+let noteIndex = 0;
+let stateListeners: Array<(playing: boolean) => void> = [];
 
 export function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   if (!audioCtx) {
-    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const AudioContextClass =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (AudioContextClass) {
       audioCtx = new AudioContextClass();
     }
@@ -25,20 +21,16 @@ export function getAudioContext(): AudioContext | null {
   return audioCtx;
 }
 
-// Gentle pleasant chime when opening the seal
+// Gentle sound effects
 export function playSealBreakSound() {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
     const now = ctx.currentTime;
 
-    // Subtle paper crinkle / chime
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-
     osc.type = 'triangle';
     osc.frequency.setValueAtTime(320, now);
     osc.frequency.exponentialRampToValueAtTime(540, now + 0.15);
@@ -51,27 +43,21 @@ export function playSealBreakSound() {
 
     osc.start(now);
     osc.stop(now + 0.35);
-  } catch {
-    // Ignore audio restrictions
-  }
+  } catch {}
 }
 
-// Stamp collecting click sound
 export function playStampSound() {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
     const now = ctx.currentTime;
 
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(523.25, now); // C5
-    osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.1); // E5
+    osc.frequency.setValueAtTime(523.25, now);
+    osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.1);
 
     gain.gain.setValueAtTime(0.15, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
@@ -81,25 +67,19 @@ export function playStampSound() {
 
     osc.start(now);
     osc.stop(now + 0.2);
-  } catch {
-    // Ignore
-  }
+  } catch {}
 }
 
-// Tea pouring bubbling sound
 export function playTeaSound() {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
     const now = ctx.currentTime;
 
     [440, 554, 659, 880].forEach((freq, i) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-
       osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, now + i * 0.08);
 
@@ -112,26 +92,20 @@ export function playTeaSound() {
       osc.start(now + i * 0.08);
       osc.stop(now + i * 0.08 + 0.25);
     });
-  } catch {
-    // Ignore
-  }
+  } catch {}
 }
 
-// Victory sound for quiz
 export function playVictorySound() {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
     const now = ctx.currentTime;
 
-    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+    const notes = [523.25, 659.25, 783.99, 1046.50];
     notes.forEach((freq, idx) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(freq, now + idx * 0.12);
 
@@ -144,12 +118,10 @@ export function playVictorySound() {
       osc.start(now + idx * 0.12);
       osc.stop(now + idx * 0.12 + 0.4);
     });
-  } catch {
-    // Ignore
-  }
+  } catch {}
 }
 
-// Gentle ambient music box loop (Russian folk music box harmony)
+// Gentle ambient Russian folk music box melody
 const PENTATONIC_MELODY = [
   523.25, // C5
   587.33, // D5
@@ -165,9 +137,93 @@ const PENTATONIC_MELODY = [
   523.25   // C5
 ];
 
-let noteIndex = 0;
-let stateListeners: Array<(playing: boolean) => void> = [];
-let audioActiveListeners: Array<(active: boolean) => void> = [];
+function scheduleChime(time: number, freq: number) {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  try {
+    // Primary bell tone
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, time);
+
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.linearRampToValueAtTime(0.045, time + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 1.35);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(time);
+    osc.stop(time + 1.35);
+
+    // Soft sparkle harmonic
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(freq * 2, time);
+
+    gain2.gain.setValueAtTime(0.0001, time);
+    gain2.gain.linearRampToValueAtTime(0.012, time + 0.015);
+    gain2.gain.exponentialRampToValueAtTime(0.00005, time + 0.5);
+
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+
+    osc2.start(time);
+    osc2.stop(time + 0.5);
+  } catch {}
+}
+
+const NOTE_INTERVAL = 1.35; // seconds
+const LOOKAHEAD_SEC = 0.5;
+
+function runScheduler() {
+  if (!isBgmDesired || !isBgmPlaying) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  if (ctx.state === 'suspended') {
+    ctx.resume().catch(() => {});
+    return;
+  }
+
+  // Catch up clock if behind (tab switch, etc.)
+  if (nextNoteTime < ctx.currentTime) {
+    nextNoteTime = ctx.currentTime + 0.05;
+  }
+
+  while (nextNoteTime < ctx.currentTime + LOOKAHEAD_SEC) {
+    const freq = PENTATONIC_MELODY[noteIndex % PENTATONIC_MELODY.length];
+    noteIndex++;
+    scheduleChime(nextNoteTime, freq);
+    nextNoteTime += NOTE_INTERVAL;
+  }
+}
+
+function startScheduler() {
+  if (!schedulerTimer) {
+    nextNoteTime = 0;
+    schedulerTimer = setInterval(runScheduler, 100);
+  }
+  runScheduler();
+}
+
+function stopScheduler() {
+  if (schedulerTimer) {
+    clearInterval(schedulerTimer);
+    schedulerTimer = null;
+  }
+}
+
+function notifyState(playing: boolean) {
+  isBgmPlaying = playing;
+  stateListeners.forEach((l) => {
+    try {
+      l(playing);
+    } catch {}
+  });
+}
 
 export function subscribeBgmState(listener: (playing: boolean) => void): () => void {
   stateListeners.push(listener);
@@ -178,270 +234,93 @@ export function subscribeBgmState(listener: (playing: boolean) => void): () => v
 }
 
 export function subscribeAudioActiveState(listener: (active: boolean) => void): () => void {
-  audioActiveListeners.push(listener);
-  listener(isAudioActuallyRunning());
-  return () => {
-    audioActiveListeners = audioActiveListeners.filter((l) => l !== listener);
-  };
+  return subscribeBgmState(listener);
 }
 
-function notifyState(playing: boolean) {
-  isBgmPlaying = playing;
-  stateListeners.forEach((l) => {
-    try {
-      l(playing);
-    } catch {
-      // ignore
-    }
-  });
-  notifyAudioActiveState();
-}
-
-function notifyAudioActiveState() {
-  const active = isAudioActuallyRunning();
-  audioActiveListeners.forEach((l) => {
-    try {
-      l(active);
-    } catch {
-      // ignore
-    }
-  });
+export function isAudioActuallyRunning(): boolean {
+  return isBgmPlaying;
 }
 
 export function getIsBgmPlaying(): boolean {
   return isBgmPlaying;
 }
 
-export function isAudioActuallyRunning(): boolean {
-  return isBgmPlaying && isBgmDesired && audioCtx !== null && audioCtx.state === 'running';
-}
-
-function playSingleChime(ctx: AudioContext, freq: number) {
-  try {
-    const now = ctx.currentTime;
-
-    // Primary fundamental bell
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq, now);
-
-    // Warm bell-envelope
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.linearRampToValueAtTime(0.05, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.35);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start(now);
-    osc.stop(now + 1.35);
-
-    // Subtle soft octave overtone for music-box sparkle
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(freq * 2, now);
-
-    gain2.gain.setValueAtTime(0.0005, now);
-    gain2.gain.linearRampToValueAtTime(0.015, now + 0.015);
-    gain2.gain.exponentialRampToValueAtTime(0.00005, now + 0.5);
-
-    osc2.connect(gain2);
-    gain2.connect(ctx.destination);
-
-    osc2.start(now);
-    osc2.stop(now + 0.5);
-  } catch {
-    // ignore
-  }
-}
-
-export function ensurePlaybackLoop() {
-  const ctx = getAudioContext();
-  if (!ctx) return;
-
-  if (bgmInterval) {
-    clearInterval(bgmInterval);
-    bgmInterval = null;
-  }
-
-  notifyState(true);
-
-  const step = () => {
-    if (!isBgmDesired) {
-      stopAmbientBgm();
-      return;
-    }
-    const currentCtx = getAudioContext();
-    if (!currentCtx) return;
-
-    if (currentCtx.state === 'suspended') {
-      currentCtx.resume().then(() => {
-        if (currentCtx.state === 'running') {
-          notifyAudioActiveState();
-        }
-      }).catch(() => {});
-      // Wait until context is running before playing notes
-      return;
-    }
-
-    notifyAudioActiveState();
-    const freq = PENTATONIC_MELODY[noteIndex % PENTATONIC_MELODY.length];
-    noteIndex++;
-    playSingleChime(currentCtx, freq);
-  };
-
-  // If already running, play initial note right away
-  if (ctx.state === 'running') {
-    step();
-  }
-  bgmInterval = setInterval(step, 1350);
+export function ensurePlaybackLoop(): void {
+  startAmbientBgm();
 }
 
 export function startAmbientBgm(): boolean {
   isBgmDesired = true;
   isBgmPlaying = true;
-  try {
-    localStorage.removeItem('mfm_bgm_muted');
-  } catch {}
-
   const ctx = getAudioContext();
-  if (!ctx) return false;
-
-  if (ctx.state === 'suspended') {
-    ctx.resume().then(() => {
-      ensurePlaybackLoop();
-      notifyAudioActiveState();
-    }).catch(() => {});
+  if (ctx && ctx.state === 'suspended') {
+    ctx.resume().catch(() => {});
   }
-
-  ensurePlaybackLoop();
+  startScheduler();
+  notifyState(true);
   return true;
 }
 
 export function stopAmbientBgm(): void {
   isBgmDesired = false;
   isBgmPlaying = false;
-  try {
-    localStorage.setItem('mfm_bgm_muted', 'true');
-  } catch {}
-
-  if (bgmInterval) {
-    clearInterval(bgmInterval);
-    bgmInterval = null;
-  }
+  stopScheduler();
   notifyState(false);
 }
 
-export function toggleAmbientBgm(onStateChange?: (playing: boolean) => void): boolean {
-  if (isBgmPlaying && isAudioActuallyRunning()) {
+export function toggleAmbientBgm(): boolean {
+  if (isBgmPlaying) {
     stopAmbientBgm();
-    onStateChange?.(false);
     return false;
   } else {
-    const started = startAmbientBgm();
-    onStateChange?.(started);
-    return started;
+    startAmbientBgm();
+    return true;
   }
 }
 
-// Auto-activate audio reliably across Chrome, Yandex, mobile, tablets & desktops
+// Global user interaction listener to wake up AudioContext on the first tap/click anywhere
 if (typeof window !== 'undefined') {
-  const unlockEvents = [
-    'pointerdown',
-    'touchstart',
-    'touchend',
-    'click',
-    'keydown',
-    'scroll'
-  ];
+  const unlockEvents = ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown'];
 
-  const handleUserGesture = () => {
-    if (!isBgmDesired) return;
+  const handleFirstInteraction = () => {
     const ctx = getAudioContext();
-    if (!ctx) return;
-
-    const detachIfRunning = () => {
-      if (ctx.state === 'running') {
-        unlockEvents.forEach((evt) => {
-          window.removeEventListener(evt, handleUserGesture, true);
-          document.removeEventListener(evt, handleUserGesture, true);
-        });
-        notifyAudioActiveState();
-      }
-    };
-
-    if (ctx.state === 'suspended') {
+    if (ctx && ctx.state === 'suspended') {
       ctx.resume().then(() => {
         if (isBgmDesired) {
-          ensurePlaybackLoop();
+          startScheduler();
         }
-        detachIfRunning();
       }).catch(() => {});
+    } else if (isBgmDesired) {
+      startScheduler();
     }
-
-    // Silent buffer unlock for mobile iOS Safari and Android Chrome/Yandex
-    try {
-      const buffer = ctx.createBuffer(1, 1, 22050);
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(ctx.destination);
-      source.start(0);
-    } catch {}
-
-    if (isBgmDesired) {
-      ensurePlaybackLoop();
-    }
-
-    detachIfRunning();
   };
 
-  // Register capturing listener on both window and document
   unlockEvents.forEach((evt) => {
-    window.addEventListener(evt, handleUserGesture, { capture: true, passive: true });
-    document.addEventListener(evt, handleUserGesture, { capture: true, passive: true });
+    window.addEventListener(evt, handleFirstInteraction, { capture: true, passive: true });
+    document.addEventListener(evt, handleFirstInteraction, { capture: true, passive: true });
   });
 
-  // Start playback loop immediately on startup so sound is enabled and running right away
-  ensurePlaybackLoop();
+  // Start scheduler immediately so as soon as context runs, notes stream smoothly
+  startScheduler();
 
-  // Attempt instant unmuted resume on page load
-  const tryImmediateAutoplay = () => {
-    if (!isBgmDesired) return;
+  // Try immediate resume
+  try {
     const ctx = getAudioContext();
-    if (!ctx) return;
-
-    if (ctx.state === 'suspended') {
-      ctx.resume().then(() => {
-        if (isBgmDesired && ctx.state === 'running') {
-          ensurePlaybackLoop();
-          notifyAudioActiveState();
-        }
-      }).catch(() => {});
-    } else if (ctx.state === 'running') {
-      notifyAudioActiveState();
+    if (ctx && ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
     }
-  };
+  } catch {}
 
-  if (document.readyState === 'complete') {
-    tryImmediateAutoplay();
-  } else {
-    window.addEventListener('load', tryImmediateAutoplay, { once: true });
-    window.addEventListener('DOMContentLoaded', tryImmediateAutoplay, { once: true });
-  }
-
-  // Restore audio if tab was in background and user returns
+  // Handle visibility changes (resume when returning to tab)
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && isBgmDesired) {
       const ctx = getAudioContext();
       if (ctx && ctx.state === 'suspended') {
-        ctx.resume().then(() => {
-          if (isBgmDesired) ensurePlaybackLoop();
-          notifyAudioActiveState();
-        }).catch(() => {});
+        ctx.resume().catch(() => {});
+      }
+      if (isBgmPlaying) {
+        startScheduler();
       }
     }
   });
 }
-
