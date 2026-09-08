@@ -26,6 +26,7 @@ import {
 } from '../data/arinaProfile';
 import { BookRecommendation } from '../types';
 import { playStampSound } from '../utils/audioSynth';
+import { ArinaPortfolioSection } from './ArinaPortfolioSection';
 
 export function AboutArinaSection() {
   const [selectedBook, setSelectedBook] = useState<BookRecommendation>(ARINA_FAVORITES[0]);
@@ -98,7 +99,7 @@ export function AboutArinaSection() {
                 </p>
                 <p className="text-xs text-stone-600 bg-stone-50 p-3 rounded-lg border border-stone-200">
                   <strong className="text-stone-900">Мой подход: </strong>
-                  Вместо готовых шаблонов мне хотелось создать для каждого участника МФМ 2026 душевную интерактивную открытку, где переплелись русская культура, любимые истории и тепло общения!
+                  {ARINA_PROFILE.myApproach}
                 </p>
               </div>
 
@@ -111,7 +112,7 @@ export function AboutArinaSection() {
                   🎬 Дорамы («Счастье», «У Ён У», «Винченцо»)
                 </span>
                 <span className="px-3 py-1 rounded-full bg-purple-50 text-purple-800 border border-purple-200 text-xs font-medium">
-                  🌸 Аниме & Манга («Магическая битва», «Семья шпионов»)
+                  🌸 Аниме & Манга («Моя геройская академия», «Система всемогущего дизайнера»)
                 </span>
                 <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-medium">
                   🎮 Genshin • Honkai • The Sims 4 • Roblox
@@ -120,6 +121,21 @@ export function AboutArinaSection() {
             </div>
 
           </div>
+        </div>
+
+        {/* Books & Reading Passion: Clean Section Header Before Library */}
+        <div className="pt-6 pb-4 border-b border-stone-200/80 text-center max-w-3xl mx-auto space-y-3">
+          <div className="inline-flex items-center justify-center gap-2 text-rose-800 text-xs font-bold uppercase tracking-wider font-sans-ui">
+            <span>📚</span>
+            <span>Библиотека интересов</span>
+            <span>✨</span>
+          </div>
+          <h3 className="font-serif-display text-2xl sm:text-3xl lg:text-4xl font-bold text-stone-900 leading-snug">
+            Я многогранна, предпочитаю и люблю всё!
+          </h3>
+          <p className="text-stone-700 font-sans-ui text-sm sm:text-base leading-relaxed">
+            Хочу поделиться своей библиотекой — может быть, тебя что-то заинтересует, и ты тоже станешь одним из поклонников. А может, ты уже! 🫣
+          </p>
         </div>
 
         {/* Interactive Entertainment Hub */}
@@ -453,6 +469,24 @@ export function AboutArinaSection() {
             </div>
           )}
 
+        </div>
+
+        {/* Warm word from Arina */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/70 border border-amber-200 text-left flex items-start gap-3 shadow-xs">
+          <span className="text-2xl shrink-0 select-none">☕</span>
+          <div className="space-y-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-900 font-sans-ui block">
+              Слово от сердца
+            </span>
+            <p className="text-xs sm:text-sm text-stone-700 font-sans-ui leading-relaxed">
+              {ARINA_PROFILE.readingPhilosophy.ifInterestsDontMatch}
+            </p>
+          </div>
+        </div>
+
+        {/* Portfolio & Creative Projects Showcase */}
+        <div className="pt-4 border-t border-stone-300/80">
+          <ArinaPortfolioSection />
         </div>
 
       </div>

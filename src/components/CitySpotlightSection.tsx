@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { MapPin, Heart, Sparkles, Coffee, Code2, GraduationCap, Building2, Bell, Waves } from 'lucide-react';
-import { playStampSound } from '../utils/audioSynth';
-import { ARINA_PROFILE } from '../data/arinaProfile';
+import { MapPin, Heart, Sparkles, GraduationCap, Building2, Bell, Waves, Volume2, Shield } from 'lucide-react';
+import { playStampSound, playBellSound } from '../utils/audioSynth';
 import confetti from 'canvas-confetti';
 
 interface CitySpotlightSectionProps {
@@ -10,18 +9,38 @@ interface CitySpotlightSectionProps {
 }
 
 export function CitySpotlightSection({ onUnlockStamp }: CitySpotlightSectionProps) {
-  const [activeTab, setActiveTab] = useState<'ponds' | 'school' | 'science' | 'history'>('ponds');
-  const [likes, setLikes] = useState(86);
-  const [hasLiked, setHasLiked] = useState(false);
+  // Exactly 4 tabs requested: 1. Ponds (first!), 2. School, 3. Science, 4. Symbol
+  const [activeTab, setActiveTab] = useState<'ponds' | 'school' | 'science' | 'symbol'>('ponds');
+  const [likes, setLikes] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('mfm_reutov_likes');
+      return saved ? parseInt(saved, 10) : 86;
+    } catch {
+      return 86;
+    }
+  });
+  const [hasLiked, setHasLiked] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('mfm_reutov_user_liked') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [isRinging, setIsRinging] = useState(false);
 
   const handleLikeCity = () => {
     if (!hasLiked) {
       playStampSound();
-      setLikes((l) => l + 1);
+      const next = likes + 1;
+      setLikes(next);
       setHasLiked(true);
       if (onUnlockStamp) {
         onUnlockStamp('stamp-reutov');
       }
+      try {
+        localStorage.setItem('mfm_reutov_likes', next.toString());
+        localStorage.setItem('mfm_reutov_user_liked', 'true');
+      } catch {}
       confetti({
         particleCount: 40,
         spread: 55,
@@ -31,11 +50,24 @@ export function CitySpotlightSection({ onUnlockStamp }: CitySpotlightSectionProp
     }
   };
 
+  const handleRingBell = () => {
+    playBellSound();
+    setIsRinging(true);
+    if (onUnlockStamp) onUnlockStamp('stamp-reutov');
+    confetti({
+      particleCount: 30,
+      spread: 60,
+      origin: { y: 0.5 },
+      colors: ['#f59e0b', '#d97706', '#b45309'],
+    });
+    setTimeout(() => setIsRinging(false), 2200);
+  };
+
   const reutovCards = {
     ponds: {
       id: 'ponds',
       title: '«Чистые пруды» (Фабричный пруд)',
-      tag: 'Уютный уголок и природа',
+      tag: 'Вкладыш №1 • Уютный уголок и природа',
       icon: Waves,
       imageUrl: '/images/reutov-pond.jpg',
       badge: 'Фабричный пруд в Реутове',
@@ -45,31 +77,31 @@ export function CitySpotlightSection({ onUnlockStamp }: CitySpotlightSectionProp
     school: {
       id: 'school',
       title: 'МБОУ «СОШ № 6» г. Реутов',
-      tag: 'Школьная история: Школа №6',
+      tag: 'Вкладыш №2 • Из школьной истории',
       icon: GraduationCap,
       imageUrl: '/images/reutov-school.jpg',
       badge: 'Школа №6 г. Реутов',
-      story: 'В школе №6 города Реутов прошли мои школьные годы. Я имею много воспоминаний, как плохих, так и хороших. Например, я думала, что полюблю химию, а по итогу возненавидела: на первом же уроке учительница написала на доске что-то совершенно неразборчивое. Я вежливо спросила, какой именно элемент из таблицы Менделеева там написан, потому что разобрать почерк было просто невозможно! А учительница возмутилась, заявила, что я обязана это знать сама, и прямо на первом же уроке влепила мне жирную двойку! С тех пор химия для меня закрыта навсегда.',
+      story: 'В школе №6 города Реутов прошли мои школьные годы. Я имею много воспоминаний, как плохих, так и хороших. Например, я думала, что полюблю химию, а по итогу возненавидела: на первом же уроке учительница написала на доске что-то совершенно неразборчивое. Я вежливо спросила, какой именно элемент из таблицы Менделеева там написан, потому что разобрать почерк было просто невозможно! А учительница возмутилась, заявила, что я обязана это знать сама, и прямо на первом же уроке влепила мне жирную двойку! С тех пор химия для меня закрытая тема.',
       accent: 'from-amber-600 to-rose-700',
     },
     science: {
       id: 'science',
       title: 'Наукоград РФ: НПО машиностроения',
-      tag: 'Космос и Ракетостроение',
+      tag: 'Вкладыш №3 • Космос и Челомей',
       icon: Building2,
       imageUrl: '/images/reutov-npo.jpg',
-      badge: 'П-35 и НПО машиностроения',
-      story: 'Реутов — не просто уютный спутник Москвы, а официальный наукоград Российской Федерации! Здесь расположено знаменитое АО «ВПК «НПО машиностроения», основанное выдающимся конструктором академиком В. Н. Челомеем. Предприятие создавало легендарные космические станции «Алмаз», спутники и крылатые ракеты (как крылатая ракета П-35 на монументе у проходной предприятия).',
+      badge: 'Академик Челомей и космос',
+      story: 'Реутов стал официальным наукоградом РФ благодаря легендарному НПО машиностроения. В 1955 году выдающийся конструктор академик Владимир Николаевич Челомей искал базу для создания передовых крылатых ракет и космических аппаратов. Реутов был выбран идеально: близость к Москве позволяла оперативно координировать науку, а прямая тупиковая железнодорожная ветка от Курского вокзала к старому механическому заводу обеспечивала режим секретности при транспортировке тяжелых конструкций. Челомей превратил Реутов в ведущее космическое ОКБ-52, где создал пилотируемые орбитальные станции «Алмаз», ракеты-носители «Протон» и комплексы П-35!',
       accent: 'from-indigo-600 to-blue-800',
     },
-    history: {
-      id: 'history',
+    symbol: {
+      id: 'symbol',
       title: 'Герб Реутова: Колокол «Реут» и Голубь',
-      tag: 'Символ города и мир',
-      icon: Bell,
+      tag: 'Вкладыш №4 • Символ города и мира',
+      icon: Shield,
       imageUrl: '/images/reutov-coat.png',
-      badge: 'Колокол «Реут» с XV века',
-      story: 'На гербе и флаге Реутова в лазоревом поле сияет золотой сторожевой колокол, увенчанный голубем мира. По старинному преданию, в XV–XVII веках на этой возвышенности проходила сторожевая оборонительная линия Москвы. При приближении врага колокол гудел («ревел») низким предупреждающим басом, извещая Москву. От этого сторожевого колокола «Реута» и произошло имя нашего города!',
+      badge: 'Колокол «Реут» и Голубь мира',
+      story: 'На гербе и флаге Реутова в лазоревом поле сияет золотой сторожевой колокол, увенчанный белым голубем мира. Колокол напоминает о дозорном колоколе-богатыре XVI века, берегшем покой родной земли, а голубь символизирует мир, созидание и добрую весть. Колокол и голубь вместе олицетворяют верность истории и мирное будущее!',
       accent: 'from-rose-700 to-red-900',
     },
   };
@@ -77,163 +109,217 @@ export function CitySpotlightSection({ onUnlockStamp }: CitySpotlightSectionProp
   const currentCard = reutovCards[activeTab];
 
   return (
-    <section id="city" className="py-16 px-4 sm:px-6 bg-[#faf7f2] relative">
-      <div className="max-w-5xl mx-auto space-y-12">
+    <section id="city" className="py-10 px-4 sm:px-6 bg-[#faf7f2] relative scroll-mt-20">
+      <div className="max-w-5xl mx-auto space-y-6">
         
-        {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-100 text-blue-900 border border-blue-300 text-xs font-semibold uppercase tracking-wider mb-3">
+        {/* Section Header (matching screenshot IMG_20260908_162024_585.jpg) */}
+        <div className="text-center max-w-3xl mx-auto space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-900 border border-blue-200 text-xs font-semibold">
             <MapPin className="w-3.5 h-3.5 text-blue-700" />
-            Родной край Арины
+            <span>РОДНОЙ КРАЙ АРИНЫ</span>
           </div>
-          <h2 className="font-serif-display text-3xl sm:text-4xl lg:text-5xl font-bold text-stone-900">
+          <h2 className="font-serif-display text-3xl sm:text-4xl font-bold text-stone-900">
             Город Реутов: Наукоград, Школа №6 и Чистые пруды
           </h2>
-          <p className="mt-3 text-stone-600 text-base sm:text-lg font-sans-ui">
+          <p className="text-stone-600 text-sm sm:text-base font-sans-ui leading-relaxed">
             Уютный подмосковный наукоград, где я выросла, училась в школе №6 и влюбилась в программирование.
           </p>
         </div>
 
-        {/* City Concept Banner & Polaroids Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Main Reutov Card (matching screenshot IMG_20260908_162024_764.jpg) */}
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200 shadow-sm space-y-6 text-left relative overflow-hidden">
           
-          {/* Left: Atmospheric Story Card */}
-          <div className="lg:col-span-5 bg-[#fffefc] rounded-2xl p-6 sm:p-8 border border-stone-200 shadow-md space-y-5 text-left">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-stone-700 text-xs font-semibold uppercase tracking-wider">
-                <MapPin className="w-4 h-4 text-blue-600" />
-                <span>г. Реутов • Московская область</span>
+          {/* Card Top Sub-Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-bold text-stone-700 font-sans-ui">
+              <MapPin className="w-4 h-4 text-blue-600" />
+              <span>Г. РЕУТОВ • МОСКОВСКАЯ ОБЛАСТЬ</span>
+            </div>
+            <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-800 border border-blue-200 text-xs font-bold">
+              Наукоград РФ
+            </span>
+          </div>
+
+          {/* Light Blue Box: Герб и Колокол «Реут» + Bell Button */}
+          <div className="bg-blue-50/70 border border-blue-200 rounded-2xl p-4 sm:p-5 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-blue-950 font-bold text-sm sm:text-base">
+                <Bell className="w-4 h-4 text-amber-600" />
+                <span>Герб и Колокол «Реут»</span>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-900 text-xs font-bold border border-blue-200">
-                Наукоград РФ
+              <button
+                type="button"
+                onClick={handleRingBell}
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white text-xs font-bold flex items-center gap-2 shadow-xs transition-all active:scale-95 cursor-pointer shrink-0 w-fit"
+              >
+                <Bell className={`w-3.5 h-3.5 text-amber-200 ${isRinging ? 'animate-bounce' : ''}`} />
+                <Volume2 className="w-3.5 h-3.5" />
+                <span>{isRinging ? 'Колокол звенит над Русью...' : 'Ударить в Сторожевой колокол'}</span>
+              </button>
+            </div>
+            <p className="text-xs sm:text-sm text-stone-700 font-sans-ui leading-relaxed">
+              На гербе Реутова сияет золотой колокол. Словно звон колокола, передающий вести, этот цифровой сувенир летит к участникам МФМ 2026! Нажмите на кнопку выше, чтобы услышать его звон!
+            </p>
+          </div>
+
+          {/* Title & History of Reutov */}
+          <div className="space-y-3">
+            <h3 className="font-serif-display text-2xl sm:text-3xl font-bold text-stone-900">
+              История возникновения Реутова
+            </h3>
+            <p className="text-stone-700 font-sans-ui text-sm sm:text-base leading-relaxed">
+              История Реутова насчитывает более 500 лет — первое летописное упоминание датируется 1573 годом. В XVI веке на холмах к востоку от Москвы проходила дозорная сигнальная линия, защищавшая подступы к столице. На высокой сторожевой вышке висел огромный колокол «Реут»: завидя неприятеля, дозорные со всей силы били в набат, и низкий гулкий звон предупреждал об опасности за десятки вёрст, доходя прямо до Кремля. Именно от этого сторожевого колокола и пошло имя города! Позже купец Сергей Мазурин построил здесь хлопкопрядильную мануфактуру и перегородил плотиной речку Серебрянку, создав любимый Фабричный пруд. А в XX веке академик Владимир Челомей основал здесь НПО машиностроения, превратив Реутов в космический наукоград страны.
+            </p>
+          </div>
+
+          {/* Greeting Box right inside the card at bottom (matching screenshot) */}
+          <div className="pt-4 border-t border-stone-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <span className="text-xs text-stone-400 uppercase tracking-wider block font-sans-ui font-semibold">
+                ПРИВЕТ РОДНОМУ ГОРОДУ
+              </span>
+              <span className="text-xs sm:text-sm font-bold text-stone-800">
+                {likes} тёплых откликов
               </span>
             </div>
 
-            <div className="p-4 rounded-xl bg-blue-50/70 border border-blue-200/80 space-y-2">
-              <div className="flex items-center gap-2">
-                <Bell className="w-4 h-4 text-blue-700" />
-                <span className="text-xs font-bold text-blue-950">Герб и Колокол «Реут»</span>
-              </div>
-              <p className="text-xs text-stone-600 leading-relaxed font-sans-ui">
-                На гербе Реутова сияет золотой колокол. Словно звон колокола, передающий вести, этот цифровой сувенир летит к участникам МФМ 2026!
-              </p>
-            </div>
-
-            <h3 className="font-serif-display text-2xl font-bold text-stone-900 leading-snug">
-              «Здесь тихие пруды соседствуют с космическими технологиями»
-            </h3>
-
-            <p className="text-sm text-stone-600 font-sans-ui leading-relaxed">
-              Реутов расположен вплотную к востоку Москвы. Здесь удивительный контраст: с одной стороны — передовые космические инженеры НПО Машиностроения, а с другой — уютные тенистые парки у Фабричного пруда, где так здорово гулять и думать о будущем.
-            </p>
-
-            <div className="border-t border-stone-200 pt-4 flex items-center justify-between">
-              <div>
-                <span className="text-[11px] text-stone-400 uppercase tracking-wider block font-sans-ui">
-                  Привет родному городу
-                </span>
-                <span className="text-sm font-bold text-stone-800">
-                  {likes} тёплых откликов
-                </span>
-              </div>
-              <button
-                id="btn-like-city"
-                onClick={handleLikeCity}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
-                  hasLiked
-                    ? 'bg-blue-100 text-blue-800 border border-blue-300 shadow-inner'
-                    : 'bg-stone-900 hover:bg-stone-800 text-white shadow-sm'
-                }`}
-              >
-                <Heart className={`w-3.5 h-3.5 ${hasLiked ? 'fill-blue-600 text-blue-600' : ''}`} />
-                <span>{hasLiked ? 'Марка получена! ❤️' : 'Передать привет Реутову'}</span>
-              </button>
-            </div>
+            <button
+              id="btn-like-city"
+              type="button"
+              onClick={handleLikeCity}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                hasLiked
+                  ? 'bg-blue-100 text-blue-800 border border-blue-300 shadow-inner'
+                  : 'bg-stone-900 hover:bg-stone-800 text-white shadow-xs active:scale-95'
+              }`}
+            >
+              <Heart className={`w-3.5 h-3.5 ${hasLiked ? 'fill-blue-600 text-blue-600' : ''}`} />
+              <span>{hasLiked ? 'Марка получена! Привет передан ❤️' : 'Передать привет Реутову'}</span>
+            </button>
           </div>
 
-          {/* Right: Interactive Tabs & Showcase */}
-          <div className="lg:col-span-7 space-y-4">
-            
-            {/* Interactive Tab Selectors */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {(Object.keys(reutovCards) as Array<keyof typeof reutovCards>).map((key) => {
-                const card = reutovCards[key];
-                const Icon = card.icon;
-                const isActive = activeTab === key;
-                return (
-                  <button
-                    key={key}
-                    onClick={() => {
-                      playStampSound();
-                      setActiveTab(key);
-                      if (onUnlockStamp) onUnlockStamp('stamp-reutov');
-                    }}
-                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                      isActive
-                        ? 'bg-blue-50 border-blue-500 text-blue-950 shadow-xs'
-                        : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'
-                    }`}
-                  >
-                    <Icon className={`w-5 h-5 mb-2 ${isActive ? 'text-blue-600' : 'text-stone-500'}`} />
-                    <div>
-                      <span className="text-[10px] uppercase font-bold tracking-wider opacity-70 block">
-                        {card.tag.split(':')[0]}
-                      </span>
-                      <span className="text-xs font-bold block leading-tight mt-0.5">
-                        {card.title.split('(')[0]}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
+        </div>
+
+        {/* 2. ЧЕТЫРЕ ВКЛАДЫША (ТАБЛИЧКИ): 1. Пруды, 2. Школа, 3. Наукоград, 4. Герб */}
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-blue-700 font-sans-ui">
+                Уголки и хроники
+              </span>
+              <h3 className="font-serif-display text-2xl sm:text-3xl font-bold text-stone-900">
+                Четыре вкладыша о Реутове
+              </h3>
+            </div>
+            <p className="text-xs text-stone-500 font-sans-ui">
+              Нажимай на вкладыши, чтобы открыть личные воспоминания и фотографии
+            </p>
+          </div>
+
+          {/* 4 Tabs Selector */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+            {(Object.keys(reutovCards) as Array<keyof typeof reutovCards>).map((key) => {
+              const card = reutovCards[key];
+              const Icon = card.icon;
+              const isActive = activeTab === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => {
+                    playStampSound();
+                    setActiveTab(key);
+                    if (onUnlockStamp) onUnlockStamp('stamp-reutov');
+                  }}
+                  className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                    isActive
+                      ? 'bg-blue-50/90 border-blue-500 text-blue-950 shadow-sm ring-1 ring-blue-400'
+                      : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50/80 shadow-xs'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'text-stone-400'}`} />
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-600">
+                      {card.tag.split('•')[0].trim()}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs sm:text-sm font-bold block leading-snug">
+                      {card.title.split('(')[0]}
+                    </span>
+                    <span className="text-[11px] text-stone-500 line-clamp-1 mt-0.5 font-sans-ui">
+                      {card.tag.split('•')[1]?.trim() || card.tag}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active Card Showcase Display */}
+          <motion.div
+            key={currentCard.id}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+            className="bg-white rounded-3xl p-5 sm:p-7 border border-stone-200 shadow-sm text-left grid grid-cols-1 lg:grid-cols-12 gap-6 items-center"
+          >
+            {/* Visual Photo Banner */}
+            <div className={`lg:col-span-5 relative h-56 sm:h-64 rounded-2xl overflow-hidden group shadow-inner ${
+              currentCard.id === 'symbol'
+                ? 'bg-gradient-to-b from-blue-950 via-slate-900 to-stone-950 flex items-center justify-center p-6'
+                : 'bg-stone-900'
+            }`}>
+              <img
+                src={currentCard.imageUrl}
+                alt={currentCard.title}
+                className={`transition-transform duration-500 group-hover:scale-105 ${
+                  currentCard.id === 'symbol'
+                    ? 'h-44 w-auto object-contain drop-shadow-2xl'
+                    : 'w-full h-full object-cover'
+                }`}
+                loading="lazy"
+                referrerPolicy="no-referrer"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-transparent flex flex-col justify-end p-4 text-white pointer-events-none">
+                <span className="px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-xs text-[10px] font-semibold text-white w-fit mb-1">
+                  {currentCard.badge}
+                </span>
+                <h4 className="font-serif-display text-base sm:text-lg font-bold text-white">
+                  {currentCard.title}
+                </h4>
+              </div>
             </div>
 
-            {/* Active Card Showcase */}
-            <motion.div
-              key={currentCard.id}
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.25 }}
-              className="bg-white rounded-2xl p-6 border border-stone-200 shadow-lg space-y-4 text-left"
-            >
-              {/* Photo Banner with Tag */}
-              <div className={`relative h-56 sm:h-64 rounded-xl overflow-hidden group shadow-inner ${currentCard.id === 'history' ? 'bg-gradient-to-b from-blue-950 via-slate-900 to-stone-950 flex items-center justify-center p-4' : 'bg-stone-900'}`}>
-                <img
-                  src={currentCard.imageUrl}
-                  alt={currentCard.title}
-                  className={`transition-transform duration-500 group-hover:scale-105 ${currentCard.id === 'history' ? 'h-40 sm:h-44 w-auto object-contain drop-shadow-2xl' : 'w-full h-full object-cover'}`}
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-stone-950/85 via-stone-950/20 to-transparent flex flex-col justify-end p-5 text-white pointer-events-none">
-                  <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-xs text-xs font-semibold text-white w-fit mb-1">
-                    {currentCard.badge}
-                  </span>
-                  <h4 className="font-serif-display text-xl sm:text-2xl font-bold text-white">
-                    {currentCard.title}
-                  </h4>
-                </div>
+            {/* Content & Personal Story */}
+            <div className="lg:col-span-7 space-y-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                <span className="text-xs font-bold uppercase tracking-wider text-stone-500 font-sans-ui">
+                  {currentCard.tag}
+                </span>
               </div>
 
-              {/* Story Description */}
-              <div className="p-4 bg-stone-50 rounded-xl border border-stone-200/80">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Sparkles className="w-4 h-4 text-amber-600" />
-                  <span className="text-xs font-bold text-stone-900 uppercase tracking-wider font-sans-ui">
-                    {currentCard.tag}
-                  </span>
-                </div>
-                <p className="font-handwriting text-2xl sm:text-3xl text-stone-800 leading-relaxed">
+              <h4 className="font-serif-display text-xl sm:text-2xl font-bold text-stone-900">
+                {currentCard.title}
+              </h4>
+
+              <div className="p-4 bg-[#faf7f2] rounded-2xl border border-stone-200/90">
+                <p className="font-handwriting text-xl sm:text-2xl text-stone-800 leading-relaxed">
                   «{currentCard.story}»
                 </p>
               </div>
-            </motion.div>
 
-          </div>
-
+              <div className="flex items-center justify-between text-xs text-stone-500 pt-2 border-t border-stone-100">
+                <span>г. Реутов • Наукоград Российской Федерации</span>
+                <span className="font-semibold text-blue-800">{currentCard.tag.split('•')[0].trim()}</span>
+              </div>
+            </div>
+          </motion.div>
         </div>
 
       </div>
     </section>
   );
 }
+

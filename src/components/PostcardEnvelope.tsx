@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Stamp, Sparkles, RefreshCw, Send, CheckCircle, Gift, Heart, Code2 } from 'lucide-react';
+import { Stamp, Sparkles, RefreshCw, Send, CheckCircle, Gift, Heart, Code2, Globe2, Flag } from 'lucide-react';
 import { PostcardStamp } from '../types';
+import { useAudience } from '../context/AudienceContext';
+import { ARINA_PROFILE } from '../data/arinaProfile';
 import { playSealBreakSound, playStampSound, startAmbientBgm, getAudioContext } from '../utils/audioSynth';
 import confetti from 'canvas-confetti';
 import costumeDanceImage from '../assets/images/regenerated_image_1788773329767.png';
@@ -14,17 +16,23 @@ interface PostcardEnvelopeProps {
 }
 
 export function PostcardEnvelope({ stamps, onUnlockStamp }: PostcardEnvelopeProps) {
-  const [isOpen, setIsOpen] = useState(() => {
+  const { mode, setMode } = useAudience();
+  // Remember envelope open/closed state so switching audience or reloading preserves the user's choice
+  const [isOpen, setIsOpen] = useState<boolean>(() => {
     try {
-      const saved = localStorage.getItem('mfm_envelope_open');
-      if (saved !== null) {
-        return saved === 'true';
-      }
-    } catch {}
-    return false;
+      return localStorage.getItem('mfm_envelope_open') === 'true';
+    } catch {
+      return false;
+    }
   });
   const [isFlipped, setIsFlipped] = useState(false);
   const [selectedStampId, setSelectedStampId] = useState<string | null>(null);
+
+  const handleSwitchAudience = (targetMode: 'international' | 'citizen') => {
+    setMode(targetMode);
+    // Do NOT reset isOpen here — keep the envelope open if user opened it, or closed if closed
+    setIsFlipped(false);
+  };
 
   const PHOTO_DATA = {
     costume: {
@@ -107,12 +115,42 @@ export function PostcardEnvelope({ stamps, onUnlockStamp }: PostcardEnvelopeProp
           <Sparkles className="w-3.5 h-3.5 text-amber-700" />
           Памятный сувенир участнику МФМ 2026
         </div>
+        
         <h1 className="font-serif-display text-4xl sm:text-5xl lg:text-6xl text-stone-900 font-bold tracking-tight">
-          Привет из России!
+          {mode === 'citizen' ? 'Привет, дорогой друг из родных краёв!' : 'Привет из России! Welcome!'}
         </h1>
         <p className="mt-3 text-stone-600 text-base sm:text-lg max-w-2xl mx-auto font-sans-ui">
-          Интерактивная открытка от Арины — студентки-программиста. Коснитесь сургучной печати, чтобы открыть конверт и заглянуть внутрь!
+          Интерактивная открытка от студентки-программиста Арины. Коснитесь сургучной печати, чтобы открыть конверт и прочесть тёплое письмо!
         </p>
+
+        {/* Audience Mode Switcher Banner */}
+        <div className="mt-5 inline-flex items-center p-1 rounded-2xl bg-stone-100 border border-stone-300/80 shadow-xs">
+          <button
+            type="button"
+            onClick={() => handleSwitchAudience('international')}
+            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+              mode === 'international'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <Globe2 className="w-4 h-4" />
+            <span>Иностранный гость (International)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleSwitchAudience('citizen')}
+            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+              mode === 'citizen'
+                ? 'bg-rose-700 text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <Flag className="w-4 h-4" />
+            <span>Участник из городов России 🇷🇺</span>
+          </button>
+        </div>
       </div>
 
       <div className="max-w-3xl mx-auto">
@@ -353,18 +391,37 @@ export function PostcardEnvelope({ stamps, onUnlockStamp }: PostcardEnvelopeProp
                         </div>
 
                         <div className="font-handwriting text-2xl sm:text-3xl text-stone-800 leading-relaxed space-y-3">
-                          <p>
-                            Здравствуйте, дорогой друг!
-                          </p>
-                          <p>
-                            Я учусь на программиста и так как у меня не было достаточно денег я решила а почему не сделать что-то своими руками — этот интерактивный сайт-открытку. Надеюсь тебе понравится!
-                          </p>
-                          <p>
-                            Здесь я делюсь частичкой России, моего родного города и моими увлечениями.
-                          </p>
-                          <p className="text-rose-900 font-bold">
-                            Листай дальше, тебя ждут интерактивный самовар с уникальными вкусами, секрет матрёшки, викторина и обмен увлечениями!
-                          </p>
+                          {mode === 'citizen' ? (
+                            <>
+                              <p className="text-rose-950 font-bold">
+                                Привет, дорогой друг! Как здорово, что мы встретились!
+                              </p>
+                              <p>
+                                Это действительно невероятно, что мы оказались здесь вместе! Я очень рада, что судьба позволила мне попасть сюда и повстречать столько замечательных, талантливых и искренних людей со всех уголков нашей огромной страны!
+                              </p>
+                              <p>
+                                Я учусь на программиста, и так как у меня не было достаточно денег, а покупать шаблонные магнитики показалось скучным и банальным, я решила: а почему бы не сделать что-то особенное своими руками — этот интерактивный сайт-открытку?
+                              </p>
+                              <p className="text-rose-900 font-bold">
+                                Листай дальше: впереди тебя ждёт самовар с предсказаниями, игра-мозаика и уютный мост между нашими городами. Надеюсь, тебе понравится! Я очень старалась.
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-amber-950 font-bold">
+                                Дорогой друг! Welcome to Russia!
+                              </p>
+                              <p>
+                                Я в первый раз в жизни еду на такой масштабный международный фестиваль и безумно счастлива оказаться здесь! Тут столько всего удивительного, что буквально глаза разбегаются! Столько новых друзей, культур и улыбок!
+                              </p>
+                              <p>
+                                Я учусь на программиста, денег на дорогие покупные сувениры у меня было немного, да и стандартные магнитики дарить не хотелось. Поэтому я вложила всю душу и создала этот интерактивный сайт-открытку своими руками, чтобы поделиться с тобой настоящим русским теплом!
+                              </p>
+                              <p className="text-rose-900 font-bold">
+                                Листай дальше, заваривай чай в самоваре, лови предсказание дня и давай знакомиться! Надеюсь, эта открытка согреет твоё сердце! Я очень старалась!
+                              </p>
+                            </>
+                          )}
                         </div>
                       </div>
 

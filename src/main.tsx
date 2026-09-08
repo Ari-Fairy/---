@@ -1,6 +1,7 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
+import { AudienceProvider } from './context/AudienceContext.tsx';
 import './index.css';
 
 // Prevent browser translation tools (Google Translate, Yandex Translate) from crashing React DOM reconciliation
@@ -24,7 +25,9 @@ if (typeof window !== 'undefined' && typeof Node === 'function' && Node.prototyp
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <AudienceProvider>
+      <App />
+    </AudienceProvider>
   </StrictMode>,
 );
 

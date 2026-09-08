@@ -23,6 +23,7 @@ import {
   Smile,
 } from 'lucide-react';
 import { SurveyFormData } from '../types';
+import { useAudience } from '../context/AudienceContext';
 import { playStampSound, playVictorySound } from '../utils/audioSynth';
 import confetti from 'canvas-confetti';
 
@@ -47,6 +48,7 @@ const INTEREST_OPTIONS = [
 ];
 
 export function SurveyBookSection({ quizScore, onUnlockStamp }: SurveyBookSectionProps) {
+  const { mode } = useAudience();
   const [formData, setFormData] = useState<SurveyFormData>({
     name: '',
     countryCity: '',
@@ -301,20 +303,22 @@ export function SurveyBookSection({ quizScore, onUnlockStamp }: SurveyBookSectio
   };
 
   return (
-    <section id="survey" className="py-16 px-4 sm:px-6 bg-[#f5efe4]/60 border-t border-stone-200 relative">
+    <section id="survey-books" className="py-16 px-4 sm:px-6 bg-[#f5efe4]/60 border-t border-stone-200 relative">
       <div className="max-w-4xl mx-auto space-y-10">
         
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-100 text-rose-900 border border-rose-300 text-xs font-semibold uppercase tracking-wider mb-3">
             <Gift className="w-3.5 h-3.5 text-rose-700" />
-            Книга гостей & Обмен сувенирами
+            {mode === 'citizen' ? 'Книга гостей • Мост между нашими городами' : 'Книга гостей • Guestbook for International Friends'}
           </div>
           <h2 className="font-serif-display text-3xl sm:text-4xl lg:text-5xl font-bold text-stone-900">
             Оставь послание и посоветуй книгу
           </h2>
           <p className="mt-3 text-stone-600 text-base sm:text-lg font-sans-ui">
-            Давай обменяемся контактами, интересами и любимыми произведениями! А если у тебя тоже есть свой сувенир или проект — поделись ссылкой на него.
+            {mode === 'citizen'
+              ? 'Давай обменяемся контактами, любимыми произведениями и интересными проектами! Напиши, из какого ты города или региона, и что тебе по душе!'
+              : 'Давай обменяемся контактами, культурой и любимыми историями! Расскажи о себе, посоветуй книгу или фильм и поделись ссылкой на свой сувенир или проект.'}
           </p>
         </div>
 
@@ -399,7 +403,7 @@ export function SurveyBookSection({ quizScore, onUnlockStamp }: SurveyBookSectio
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Например: Даниил / Ли Вэй / Анна"
+                    placeholder={mode === 'citizen' ? 'Например: Даниил / Анна / Иван' : 'Например: John / Li Wei / Maria / Alex'}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-stone-800 text-sm focus:outline-hidden focus:border-rose-600 focus:ring-1 focus:ring-rose-600 transition-all font-sans-ui bg-stone-50/50"
                   />
                 </div>
@@ -412,7 +416,11 @@ export function SurveyBookSection({ quizScore, onUnlockStamp }: SurveyBookSectio
                     type="text"
                     value={formData.countryCity}
                     onChange={(e) => setFormData({ ...formData, countryCity: e.target.value })}
-                    placeholder="Например: Казань, Россия / Сеул, Корея"
+                    placeholder={
+                      mode === 'citizen'
+                        ? 'Например: Казань / Новосибирск / Владивосток / Екатеринбург'
+                        : 'Например: Beijing, China / Cairo, Egypt / Paris, France / Almaty'
+                    }
                     className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-stone-800 text-sm focus:outline-hidden focus:border-rose-600 focus:ring-1 focus:ring-rose-600 transition-all font-sans-ui bg-stone-50/50"
                   />
                 </div>

@@ -81,20 +81,22 @@
         } catch(e) {}
       }
 
-      function googleTranslateElementInit() {
-        if (window.google && window.google.translate) {
-          new window.google.translate.TranslateElement({
-            pageLanguage: 'ru',
-            autoDisplay: false
-          }, 'google_translate_element');
-          triggerTargetLanguage();
-        }
-      }
+      window.googleTranslateElementInit = function() {
+        try {
+          if (window.google && window.google.translate) {
+            new window.google.translate.TranslateElement({
+              pageLanguage: 'ru',
+              autoDisplay: false
+            }, 'google_translate_element');
+            triggerTargetLanguage();
+          }
+        } catch(e) {}
+      };
 
       document.addEventListener('DOMContentLoaded', triggerTargetLanguage);
       window.addEventListener('load', triggerTargetLanguage);
     </script>
-    <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async defer></script>
+    <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async defer onerror="this.onerror=null;"></script>
 
     <!-- Background Musicbox Audio Element -->
     <audio id="bgm-musicbox" loop playsinline preload="auto">

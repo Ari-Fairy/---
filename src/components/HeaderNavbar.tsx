@@ -1,5 +1,5 @@
 import React, { useState, useEffect, MouseEvent } from 'react';
-import { Volume2, VolumeX, Mail, Sparkles, Compass, Heart, Menu, X } from 'lucide-react';
+import { Volume2, VolumeX, Mail, Sparkles, Compass, Heart, Menu, X, Globe2, Flag } from 'lucide-react';
 import {
   toggleAmbientBgm,
   startAmbientBgm,
@@ -8,6 +8,7 @@ import {
   getIsBgmPlaying,
 } from '../utils/audioSynth';
 import { LanguageSelector } from './LanguageSelector';
+import { useAudience } from '../context/AudienceContext';
 
 interface HeaderNavbarProps {
   onOpenMailbox: () => void;
@@ -16,6 +17,7 @@ interface HeaderNavbarProps {
 }
 
 export function HeaderNavbar({ onOpenMailbox, stampsCount, totalStamps }: HeaderNavbarProps) {
+  const { mode, toggleMode } = useAudience();
   const [isPlaying, setIsPlaying] = useState(() => getIsBgmPlaying());
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -78,6 +80,16 @@ export function HeaderNavbar({ onOpenMailbox, stampsCount, totalStamps }: Header
 
         {/* Right action buttons: language, stamps, sound, mailbox, and menu for tablet/mobile */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          {/* Audience Mode Toggle (Hidden on mobile per Photo 3 request; visible on >= sm) */}
+          <button
+            type="button"
+            onClick={toggleMode}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 h-8.5 sm:h-9 rounded-full bg-stone-100 hover:bg-amber-100/70 border border-stone-300/80 text-xs font-semibold text-stone-700 hover:text-stone-900 transition-colors shrink-0 cursor-pointer"
+            title={mode === 'citizen' ? 'Выбран режим: Гражданин РФ (нажмите, чтобы сменить на иностранного гостя)' : 'Mode: International (click to switch to citizen)'}
+          >
+            <span>{mode === 'citizen' ? '🇷🇺 РФ' : '🌍 World'}</span>
+          </button>
+
           {/* Language Selector */}
           <LanguageSelector />
 

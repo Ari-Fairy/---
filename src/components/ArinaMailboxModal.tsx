@@ -67,7 +67,10 @@ export function ArinaMailboxModal({ isOpen, onClose }: ArinaMailboxModalProps) {
     let localList: SubmissionEntry[] = [];
     try {
       const stored = localStorage.getItem('arina_local_submissions');
-      if (stored) localList = JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) localList = parsed;
+      }
     } catch (e) {
       console.warn('Failed to parse local submissions', e);
     }

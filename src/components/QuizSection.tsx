@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { HelpCircle, CheckCircle2, XCircle, Award, Sparkles, RefreshCw, ArrowRight } from 'lucide-react';
-import { QUIZ_QUESTIONS } from '../data/quizQuestions';
+import { QUIZ_QUESTIONS, CITIZEN_QUIZ_QUESTIONS } from '../data/quizQuestions';
+import { useAudience } from '../context/AudienceContext';
 import { playStampSound, playVictorySound } from '../utils/audioSynth';
 import confetti from 'canvas-confetti';
 
@@ -11,13 +12,25 @@ interface QuizSectionProps {
 }
 
 export function QuizSection({ onUnlockStamp, onScoreUpdated }: QuizSectionProps) {
+  const { mode } = useAudience();
+  const questions = mode === 'citizen' ? CITIZEN_QUIZ_QUESTIONS : QUIZ_QUESTIONS;
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [isCompleted, setIsCompleted] = useState(false);
   const [score, setScore] = useState(0);
 
-  const currentQ = QUIZ_QUESTIONS[currentIndex];
+  // Reset quiz progress smoothly whenever the audience mode is switched
+  useEffect(() => {
+    setCurrentIndex(0);
+    setSelectedOption(null);
+    setAnswers({});
+    setIsCompleted(false);
+    setScore(0);
+  }, [mode]);
+
+  const currentQ = questions[currentIndex] || questions[0];
 
   const handleSelectOption = (idx: number) => {
     if (selectedOption !== null) return; // already chosen
@@ -34,13 +47,16 @@ export function QuizSection({ onUnlockStamp, onScoreUpdated }: QuizSectionProps)
   };
 
   const handleNextQuestion = () => {
-    if (currentIndex < QUIZ_QUESTIONS.length - 1) {
+    if (currentIndex < questions.length - 1) {
       setCurrentIndex((prev) => prev + 1);
       setSelectedOption(null);
     } else {
-      // Quiz completed! Calculate strictly by verifying every question in QUIZ_QUESTIONS
-      const currentAnswers = { ...answers, ...(selectedOption !== null ? { [currentQ.id]: selectedOption } : {}) };
-      const finalScore = QUIZ_QUESTIONS.reduce((acc, q) => {
+      // Quiz completed! Calculate strictly by verifying every question in the active questions array
+      const currentAnswers = {
+        ...answers,
+        ...(selectedOption !== null ? { [currentQ.id]: selectedOption } : {}),
+      };
+      const finalScore = questions.reduce((acc, q) => {
         return currentAnswers[q.id] === q.correctIndex ? acc + 1 : acc;
       }, 0);
 
@@ -71,17 +87,21 @@ export function QuizSection({ onUnlockStamp, onScoreUpdated }: QuizSectionProps)
     <section id="quiz" className="py-16 px-4 sm:px-6 bg-[#faf7f2] relative">
       <div className="max-w-4xl mx-auto space-y-10">
         
-        {/* Header */}
+        {/* Header tailored to audience mode */}
         <div className="text-center max-w-2xl mx-auto">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-100 text-purple-900 border border-purple-300 text-xs font-semibold uppercase tracking-wider mb-3">
             <HelpCircle className="w-3.5 h-3.5 text-purple-700" />
-            Интерактивный тест
+            {mode === 'citizen' ? 'Интерактивная викторина' : 'Интерактивный тест'}
           </div>
           <h2 className="font-serif-display text-3xl sm:text-4xl lg:text-5xl font-bold text-stone-900">
-            Викторина: Что ты узнал о России?
+            {mode === 'citizen'
+              ? 'Викторина: Насколько хорошо ты знаешь родную культуру?'
+              : 'Викторина: Что ты узнал о России?'}
           </h2>
           <p className="mt-3 text-stone-600 text-base sm:text-lg font-sans-ui">
-            6 интересных вопросов о культуре, традициях чая, масштабе, космосе, наукограде Реутов и сувенире Арины. Проверь себя и получи памятный диплом участника!
+            {mode === 'citizen'
+              ? '6 душевных вопросов о русских традициях, чаепитии, ремёслах, наукограде Реутов и сувенире Арины. Проверь себя и получи памятную грамоту!'
+              : '6 интересных вопросов о культуре, традициях чая, масштабе, космосе, наукограде Реутов и сувенире Арины. Проверь себя и получи памятный диплом участника!'}
           </p>
         </div>
 
@@ -93,7 +113,7 @@ export function QuizSection({ onUnlockStamp, onScoreUpdated }: QuizSectionProps)
             <div className="flex flex-nowrap items-center justify-between gap-2 sm:gap-4 pb-3 border-b border-stone-200">
               <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
                 <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-purple-800 font-sans-ui whitespace-nowrap">
-                  Вопрос {currentIndex + 1} из {QUIZ_QUESTIONS.length}
+                  Вопрос {currentIndex + 1} из {questions.length}
                 </span>
                 <span className="text-[10px] sm:text-[11px] font-medium px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-sans-ui whitespace-nowrap shrink-0">
                   Правильно: {score}
@@ -103,11 +123,11 @@ export function QuizSection({ onUnlockStamp, onScoreUpdated }: QuizSectionProps)
                 <div className="w-12 sm:w-28 h-1.5 sm:h-2 bg-stone-100 rounded-full overflow-hidden shrink-0">
                   <div
                     className="h-full bg-purple-600 transition-all duration-300 rounded-full"
-                    style={{ width: `${((currentIndex + 1) / QUIZ_QUESTIONS.length) * 100}%` }}
+                    style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
                   />
                 </div>
                 <span className="text-[10px] sm:text-xs font-mono text-stone-400 whitespace-nowrap shrink-0">
-                  {Math.round(((currentIndex + 1) / QUIZ_QUESTIONS.length) * 100)}%
+                  {Math.round(((currentIndex + 1) / questions.length) * 100)}%
                 </span>
               </div>
             </div>
@@ -140,7 +160,7 @@ export function QuizSection({ onUnlockStamp, onScoreUpdated }: QuizSectionProps)
                     key={idx}
                     disabled={selectedOption !== null}
                     onClick={() => handleSelectOption(idx)}
-                    className={`w-full p-4 rounded-xl border text-left text-xs sm:text-sm font-sans-ui transition-all flex items-center justify-between gap-3 ${btnStyles}`}
+                    className={`w-full p-4 rounded-xl border text-left text-xs sm:text-sm font-sans-ui transition-all flex items-center justify-between gap-3 cursor-pointer ${btnStyles}`}
                   >
                     <div className="flex items-center gap-3">
                       <span className="w-7 h-7 rounded-lg bg-stone-200/80 flex items-center justify-center font-bold text-xs shrink-0">
@@ -198,10 +218,10 @@ export function QuizSection({ onUnlockStamp, onScoreUpdated }: QuizSectionProps)
                   <div className="pt-2 text-right">
                     <button
                       onClick={handleNextQuestion}
-                      className="px-5 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs inline-flex items-center gap-1.5 shadow-sm transition-all"
+                      className="px-5 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs inline-flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
                     >
                       <span>
-                        {currentIndex < QUIZ_QUESTIONS.length - 1
+                        {currentIndex < questions.length - 1
                           ? 'Следующий вопрос'
                           : 'Посмотреть результаты'}
                       </span>
@@ -230,7 +250,9 @@ export function QuizSection({ onUnlockStamp, onScoreUpdated }: QuizSectionProps)
                 МФМ 2026 • Памятная грамота
               </span>
               <h3 className="font-serif-display text-3xl sm:text-4xl font-bold text-stone-900">
-                Сертификат знатока России и Друга Арины
+                {mode === 'citizen'
+                  ? 'Сертификат знатока родных традиций'
+                  : 'Сертификат знатока России'}
               </h3>
             </div>
 
@@ -247,7 +269,7 @@ export function QuizSection({ onUnlockStamp, onScoreUpdated }: QuizSectionProps)
                 <div className="text-2xl text-stone-300 font-light select-none">/</div>
                 <div className="text-center">
                   <span className="block text-3xl sm:text-4xl font-black text-stone-700 font-serif-display">
-                    {QUIZ_QUESTIONS.length}
+                    {questions.length}
                   </span>
                   <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500">
                     Всего вопросов
@@ -256,32 +278,34 @@ export function QuizSection({ onUnlockStamp, onScoreUpdated }: QuizSectionProps)
               </div>
 
               <p className="text-sm font-semibold text-stone-800">
-                Правильно: <span className="text-emerald-700 font-bold">{score}</span> из <span className="text-stone-700 font-bold">{QUIZ_QUESTIONS.length}</span> вопросов!
+                Правильно: <span className="text-emerald-700 font-bold">{score}</span> из <span className="text-stone-700 font-bold">{questions.length}</span> вопросов!
               </p>
               <p className="text-xs text-stone-600 leading-relaxed">
                 {score >= 5
-                  ? 'Потрясающе! Ты великолепно чувствуешь культуру и открыт новому знанию!'
+                  ? 'Потрясающе! Ты великолепно чувствуешь культуру и душевные традиции!'
                   : score >= 3
-                  ? 'Отличный результат! Теперь Россия и её традиции стали для тебя ближе.'
-                  : 'Спасибо за участие! Здорово, что ты интересуешься новой культурой и открыт дружбе!'}
+                  ? 'Отличный результат! Приятно встретить человека, любящего культуру и общение.'
+                  : 'Спасибо за участие! Здорово, что мы провели это время вместе!'}
               </p>
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <button
                 onClick={handleRestart}
-                className="px-4 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold inline-flex items-center gap-2 transition-all font-sans-ui"
+                className="px-4 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold inline-flex items-center gap-2 transition-all font-sans-ui cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>Пройти заново</span>
               </button>
 
-              <a
-                href="#survey"
-                className="px-5 py-2.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs font-semibold inline-flex items-center gap-2 shadow-sm transition-all font-sans-ui"
+              <button
+                type="button"
+                disabled
+                title="Переход к опросу отключен"
+                className="px-5 py-2.5 rounded-xl bg-stone-200 text-stone-400 text-xs font-semibold inline-flex items-center gap-2 font-sans-ui cursor-not-allowed border border-stone-200 opacity-60 select-none"
               >
                 <span>Перейти к обмену книгами и опросу ↓</span>
-              </a>
+              </button>
             </div>
           </motion.div>
         )}

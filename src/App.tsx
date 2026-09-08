@@ -13,41 +13,112 @@ import { QuizSection } from './components/QuizSection';
 import { SurveyBookSection } from './components/SurveyBookSection';
 import { ArinaMailboxModal } from './components/ArinaMailboxModal';
 import { Footer } from './components/Footer';
-import { INITIAL_STAMPS } from './data/russiaFacts';
+import { INTERNATIONAL_STAMPS, CITIZEN_STAMPS } from './data/russiaFacts';
 import { PostcardStamp } from './types';
+import { useAudience } from './context/AudienceContext';
 
 export default function App() {
-  const [stamps, setStamps] = useState<PostcardStamp[]>(() => {
+  const { mode } = useAudience();
+  const [unlockedStampIds, setUnlockedStampIds] = useState<string[]>(() => {
+    const idsSet = new Set<string>();
     try {
       const saved = localStorage.getItem('mfm_unlocked_stamps');
       if (saved) {
-        const unlockedIds: string[] = JSON.parse(saved);
-        if (Array.isArray(unlockedIds) && unlockedIds.length > 0) {
-          return INITIAL_STAMPS.map((s) => ({
-            ...s,
-            unlocked: s.unlocked || unlockedIds.includes(s.id),
-          }));
+        const ids = JSON.parse(saved);
+        if (Array.isArray(ids)) {
+          ids.forEach((id) => {
+            if (typeof id === 'string') idsSet.add(id);
+          });
         }
       }
     } catch (e) {
       console.warn('Could not read stamps from localStorage', e);
     }
-    return INITIAL_STAMPS;
+
+    // Cross-sync equivalent stamps between modes
+    if (idsSet.has('stamp-tea')) idsSet.add('stamp-samovar');
+    if (idsSet.has('stamp-samovar')) idsSet.add('stamp-tea');
+    if (idsSet.has('stamp-mosaic')) idsSet.add('stamp-matryoshka');
+    if (idsSet.has('stamp-matryoshka')) idsSet.add('stamp-mosaic');
+
+    // Also check saved interactive state flags so users don't lose stamps
+    try {
+      const fortuneRaw = localStorage.getItem('mfm_daily_fortune_state');
+      if (fortuneRaw) {
+        const fState = JSON.parse(fortuneRaw);
+        if (fState?.dailyFortuneId || (Array.isArray(fState?.collectedIds) && fState.collectedIds.length > 0)) {
+          idsSet.add('stamp-samovar');
+          idsSet.add('stamp-tea');
+        }
+      }
+    } catch {}
+
+    try {
+      if (localStorage.getItem('mfm_puzzle_solved') === 'true') {
+        idsSet.add('stamp-mosaic');
+        idsSet.add('stamp-matryoshka');
+      }
+    } catch {}
+
+    try {
+      if (localStorage.getItem('mfm_city_bridge_passed') === 'true') {
+        idsSet.add('stamp-bridge');
+      }
+    } catch {}
+
+    try {
+      if (localStorage.getItem('mfm_envelope_open') === 'true') {
+        idsSet.add('stamp-envelope');
+      }
+    } catch {}
+
+    const result = Array.from(idsSet);
+    try {
+      localStorage.setItem('mfm_unlocked_stamps', JSON.stringify(result));
+    } catch {}
+    return result;
   });
 
   const [quizScore, setQuizScore] = useState<number | null>(null);
   const [isMailboxOpen, setIsMailboxOpen] = useState(false);
 
+  // Derive stamps list based on audience mode
+  const currentStampsTemplate = mode === 'citizen' ? CITIZEN_STAMPS : INTERNATIONAL_STAMPS;
+  const stamps: PostcardStamp[] = currentStampsTemplate.map((s) => ({
+    ...s,
+    unlocked: s.unlocked || unlockedStampIds.includes(s.id),
+  }));
+
   const handleUnlockStamp = (id: string) => {
-    setStamps((prev) => {
-      const updated = prev.map((s) => (s.id === id ? { ...s, unlocked: true } : s));
+    setUnlockedStampIds((prev) => {
+      const toAdd = new Set<string>([id]);
+      // Pair equivalencies so both modes stay in sync
+      if (id === 'stamp-samovar' || id === 'stamp-tea') {
+        toAdd.add('stamp-samovar');
+        toAdd.add('stamp-tea');
+      }
+      if (id === 'stamp-mosaic' || id === 'stamp-matryoshka') {
+        toAdd.add('stamp-mosaic');
+        toAdd.add('stamp-matryoshka');
+      }
+
+      let changed = false;
+      const nextList = [...prev];
+      toAdd.forEach((item) => {
+        if (!nextList.includes(item)) {
+          nextList.push(item);
+          changed = true;
+        }
+      });
+
+      if (!changed) return prev;
+
       try {
-        const unlockedIds = updated.filter((s) => s.unlocked).map((s) => s.id);
-        localStorage.setItem('mfm_unlocked_stamps', JSON.stringify(unlockedIds));
+        localStorage.setItem('mfm_unlocked_stamps', JSON.stringify(nextList));
       } catch (e) {
         console.warn('Could not save stamps to localStorage', e);
       }
-      return updated;
+      return nextList;
     });
   };
 

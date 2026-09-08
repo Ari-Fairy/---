@@ -18,11 +18,15 @@ if (typeof window !== 'undefined') {
 export function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   if (!audioCtx) {
-    const AudioContextClass =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (AudioContextClass) {
-      audioCtx = new AudioContextClass();
+    try {
+      const AudioContextClass =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (AudioContextClass) {
+        audioCtx = new AudioContextClass();
+      }
+    } catch {
+      audioCtx = null;
     }
   }
   return audioCtx;
@@ -50,13 +54,18 @@ function playBgm() {
   if (!audio) return;
 
   audio.volume = 0.35;
-  const p = audio.play();
-  if (p !== undefined) {
-    p.then(() => {
-      notifyState(true);
-    }).catch(() => {
-      setupGestureUnlock();
-    });
+  try {
+    const p = audio.play();
+    if (p !== undefined) {
+      p.then(() => {
+        notifyState(true);
+      }).catch(() => {
+        // Expected browser autoplay policy: silently hook onto user interaction without console spam
+        setupGestureUnlock();
+      });
+    }
+  } catch {
+    setupGestureUnlock();
   }
 }
 
@@ -186,23 +195,56 @@ export function playSealBreakSound() {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
-    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-    const now = ctx.currentTime;
 
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(320, now);
-    osc.frequency.exponentialRampToValueAtTime(540, now + 0.15);
+    const play = () => {
+      try {
+        const now = ctx.currentTime;
+        // 1. Paper / wax seal crackle (gentle crisp textured sound)
+        const bufferSize = Math.floor(ctx.sampleRate * 0.14);
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.025));
+        }
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(1600, now);
+        const noiseGain = ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.35, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+        noise.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(ctx.destination);
+        noise.start(now);
 
-    gain.gain.setValueAtTime(0.12, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        // 2. Welcoming folk gusli/harp chime arpeggio (C5, E5, G5, C6)
+        const notes = [523.25, 659.25, 783.99, 1046.5];
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          const startTime = now + 0.04 + idx * 0.07;
+          osc.frequency.setValueAtTime(freq, startTime);
 
-    osc.connect(gain);
-    gain.connect(ctx.destination);
+          gain.gain.setValueAtTime(0.22, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.4);
 
-    osc.start(now);
-    osc.stop(now + 0.35);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start(startTime);
+          osc.stop(startTime + 0.4);
+        });
+      } catch {}
+    };
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(play).catch(play);
+    } else {
+      play();
+    }
   } catch {}
 }
 
@@ -277,6 +319,103 @@ export function playVictorySound() {
 
       osc.start(now + idx * 0.12);
       osc.stop(now + idx * 0.12 + 0.4);
+    });
+  } catch {}
+}
+
+export function playWoodTapSound() {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    const now = ctx.currentTime;
+
+    // Organic wooden knock: two rapid percussive pitch bursts
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(420, now);
+    osc.frequency.exponentialRampToValueAtTime(140, now + 0.08);
+
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.09);
+
+    // Second smaller knock (wooden resonance)
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'triangle';
+    osc2.frequency.setValueAtTime(560, now + 0.04);
+    osc2.frequency.exponentialRampToValueAtTime(220, now + 0.14);
+
+    gain2.gain.setValueAtTime(0.08, now + 0.04);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+
+    osc2.start(now + 0.04);
+    osc2.stop(now + 0.15);
+  } catch {}
+}
+
+export function playChimeSound() {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    const now = ctx.currentTime;
+
+    const notes = [659.25, 880.0, 1174.66]; // E5, A5, D6
+    notes.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+
+      gain.gain.setValueAtTime(0.1, now + idx * 0.09);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.35);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now + idx * 0.09);
+      osc.stop(now + idx * 0.09 + 0.35);
+    });
+  } catch {}
+}
+
+export function playBellSound() {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    const now = ctx.currentTime;
+
+    // Rich resonant church/watch bell chord: fundamental and overtones
+    const bellFrequencies = [293.66, 587.33, 880.0, 1174.66, 1480.0];
+    const decays = [1.8, 1.4, 1.1, 0.8, 0.5];
+    const volumes = [0.15, 0.1, 0.06, 0.04, 0.02];
+
+    bellFrequencies.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now);
+
+      gain.gain.setValueAtTime(volumes[idx], now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + decays[idx]);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + decays[idx]);
     });
   } catch {}
 }
