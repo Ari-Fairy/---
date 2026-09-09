@@ -73,16 +73,38 @@ export const LANGUAGES: LanguageOption[] = [
 
 export function getCurrentLanguage(): string {
   try {
+    // 1. Check audience mode from URL or localStorage
+    let audienceMode: string | null = null;
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlMode = params.get('mode') || params.get('audience');
+      if (urlMode === 'citizen' || urlMode === 'rf' || urlMode === 'russia') {
+        audienceMode = 'citizen';
+      } else if (urlMode === 'international' || urlMode === 'foreigner' || urlMode === 'world') {
+        audienceMode = 'international';
+      } else {
+        audienceMode = localStorage.getItem('mfm_audience_mode');
+      }
+    }
+
+    if (!audienceMode && typeof navigator !== 'undefined') {
+      const isRu = navigator.language?.toLowerCase().startsWith('ru');
+      audienceMode = isRu ? 'citizen' : 'international';
+    }
+
+    // Check if user manually selected a language in the modal
     const isExplicit = localStorage.getItem('mfm_explicit_choice') === 'true';
     const saved = localStorage.getItem('mfm_lang');
-    // Only use saved if user explicitly chose it; otherwise default is strictly English
     if (isExplicit && saved) {
       return saved;
     }
-    // Default to English as requested
-    return 'en';
+
+    // Automatic default:
+    // Citizen of RF -> Russian ('ru')
+    // Foreigner / International -> English ('en')
+    return audienceMode === 'citizen' ? 'ru' : 'en';
   } catch (e) {
-    return 'en';
+    return 'ru';
   }
 }
 
@@ -121,10 +143,47 @@ export function triggerGoogleCombo(langCode: string): boolean {
   return true;
 }
 
-export function applyLanguage(langCode: string) {
+export function ensureGoogleTranslateScriptLoaded(onReady?: () => void) {
+  if (typeof window === 'undefined') return;
+
+  if ((window as any).google && (window as any).google.translate) {
+    if (onReady) onReady();
+    return;
+  }
+
+  const prevInit = (window as any).googleTranslateElementInit;
+  (window as any).googleTranslateElementInit = function() {
+    try {
+      if ((window as any).google && (window as any).google.translate) {
+        new (window as any).google.translate.TranslateElement({
+          pageLanguage: 'ru',
+          autoDisplay: false
+        }, 'google_translate_element');
+      }
+    } catch (e) {}
+    if (prevInit) {
+      try { prevInit(); } catch(e) {}
+    }
+    if (onReady) onReady();
+  };
+
+  if (!document.getElementById('google-translate-script')) {
+    const script = document.createElement('script');
+    script.id = 'google-translate-script';
+    script.type = 'text/javascript';
+    script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+    script.async = true;
+    script.defer = true;
+    script.onerror = () => {
+      // Fail silently without error
+    };
+    document.head.appendChild(script);
+  }
+}
+
+export function applyLanguage(langCode: string, reloadIfRu = true) {
   try {
     localStorage.setItem('mfm_lang', langCode);
-    localStorage.setItem('mfm_explicit_choice', 'true');
   } catch (e) {}
 
   setGoogleTransCookie(langCode);
@@ -140,13 +199,20 @@ export function applyLanguage(langCode: string) {
 
     triggerGoogleCombo('ru');
     // If the DOM was already modified by Google Translate, reload to cleanly restore pristine Russian
-    setTimeout(() => {
-      window.location.reload();
-    }, 50);
+    if (reloadIfRu && typeof document !== 'undefined' && (document.querySelector('.goog-te-banner-frame, #goog-gt-tt, .translated-ltr, .translated-rtl') || document.body.classList.contains('translated-ltr'))) {
+      setTimeout(() => {
+        window.location.reload();
+      }, 60);
+    }
     return;
   }
 
-  // Instant trigger if combo exists
+  // Ensure Google Translate script is injected and ready
+  ensureGoogleTranslateScriptLoaded(() => {
+    triggerGoogleCombo(langCode);
+  });
+
+  // Instant trigger if combo already exists
   if (!triggerGoogleCombo(langCode)) {
     // If combo is still loading, retry every 30ms for up to 3 seconds
     let attempts = 0;

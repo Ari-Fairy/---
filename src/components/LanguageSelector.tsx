@@ -2,31 +2,42 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Globe, Search, Check, X } from 'lucide-react';
 import { LANGUAGES, getCurrentLanguage, applyLanguage, triggerGoogleCombo, setGoogleTransCookie, LanguageOption } from '../utils/translator';
+import { useAudience } from '../context/AudienceContext';
 
 export function LanguageSelector() {
+  const { mode } = useAudience();
   const [isOpen, setIsOpen] = useState(false);
   const [currentLangCode, setCurrentLangCode] = useState<string>(() => getCurrentLanguage());
   const [searchQuery, setSearchQuery] = useState('');
   const triggerButtonRef = useRef<HTMLButtonElement>(null);
 
+  // Sync language code when mode changes or on mount
   useEffect(() => {
-    // Sync language code from localStorage or cookies
-    const active = getCurrentLanguage();
-    setCurrentLangCode(active);
+    const isExplicit = localStorage.getItem('mfm_explicit_choice') === 'true';
+    const saved = localStorage.getItem('mfm_lang');
+    
+    let activeCode: string;
+    if (isExplicit && saved) {
+      activeCode = saved;
+    } else {
+      activeCode = mode === 'citizen' ? 'ru' : 'en';
+    }
+
+    setCurrentLangCode(activeCode);
 
     // Ensure default English (or saved preference) translates automatically without user having to click
-    if (active !== 'ru') {
-      setGoogleTransCookie(active);
+    if (activeCode !== 'ru') {
+      setGoogleTransCookie(activeCode);
       let tries = 0;
       const t = setInterval(() => {
         tries++;
-        if (triggerGoogleCombo(active) || tries > 80) {
+        if (triggerGoogleCombo(activeCode) || tries > 80) {
           clearInterval(t);
         }
       }, 50);
       return () => clearInterval(t);
     }
-  }, []);
+  }, [mode]);
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -40,8 +51,11 @@ export function LanguageSelector() {
   }, [isOpen]);
 
   const currentLang = useMemo(() => {
-    return LANGUAGES.find((l) => l.code === currentLangCode) || LANGUAGES[0];
-  }, [currentLangCode]);
+    return (
+      LANGUAGES.find((l) => l.code === currentLangCode) ||
+      (mode === 'citizen' ? LANGUAGES[1] : LANGUAGES[0])
+    );
+  }, [currentLangCode, mode]);
 
   const popularLanguages = useMemo(() => {
     return LANGUAGES.filter((l) => l.popular);
@@ -61,6 +75,9 @@ export function LanguageSelector() {
   const handleSelectLanguage = (lang: LanguageOption) => {
     setCurrentLangCode(lang.code);
     setIsOpen(false);
+    try {
+      localStorage.setItem('mfm_explicit_choice', 'true');
+    } catch {}
     applyLanguage(lang.code);
   };
 
@@ -76,16 +93,18 @@ export function LanguageSelector() {
           setIsOpen(!isOpen);
         }}
         aria-label="Select language / Выбрать язык"
-        className="flex items-center gap-1.5 px-2 sm:px-2.5 h-8.5 sm:h-9 rounded-xl border border-stone-300/80 bg-white/95 hover:bg-stone-50 text-stone-800 text-xs font-semibold shadow-2xs hover:border-amber-400 transition-all cursor-pointer shrink-0"
-        title="Change language / Сменить язык"
+        className="flex items-center gap-1.5 px-2.5 sm:px-3 h-8.5 sm:h-9 rounded-xl border border-stone-300/80 bg-white/95 hover:bg-stone-50 text-stone-800 text-xs font-semibold shadow-2xs hover:border-amber-400 transition-all cursor-pointer shrink-0"
+        title={mode === 'international' ? 'Language: English (click to change)' : 'Язык: Русский (нажмите для смены)'}
       >
         <Globe className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-        <span className="text-sm leading-none shrink-0">{currentLang.flag}</span>
-        <span className="font-medium hidden xl:inline truncate max-w-[75px]">
-          {currentLang.nativeName}
+        <span className="text-base leading-none shrink-0" role="img" aria-label={currentLang.name}>
+          {currentLang.flag}
         </span>
-        <span className="text-[10px] text-stone-500 font-mono hidden sm:inline uppercase">
+        <span className="font-bold text-stone-900 font-mono text-xs uppercase shrink-0">
           {currentLang.code.split('-')[0]}
+        </span>
+        <span className="font-medium hidden md:inline truncate max-w-[80px] text-stone-600">
+          {currentLang.code === 'en' ? 'English' : currentLang.nativeName}
         </span>
       </button>
 

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { applyLanguage } from '../utils/translator';
 
 export type AudienceMode = 'citizen' | 'international';
 
@@ -41,12 +42,23 @@ export function AudienceProvider({ children }: { children: React.ReactNode }) {
     setModeState(newMode);
     try {
       localStorage.setItem('mfm_audience_mode', newMode);
+      // Remove any previous explicit language override so mode determines language
+      localStorage.removeItem('mfm_explicit_choice');
       if (typeof window !== 'undefined') {
         const url = new URL(window.location.href);
         url.searchParams.set('mode', newMode);
         window.history.replaceState({}, '', url.toString());
       }
     } catch {}
+
+    // Auto switch language:
+    // Citizen of RF -> Russian ('ru')
+    // Foreign visitors -> English ('en')
+    if (newMode === 'citizen') {
+      applyLanguage('ru');
+    } else {
+      applyLanguage('en');
+    }
   };
 
   useEffect(() => {

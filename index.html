@@ -17,12 +17,50 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Ysabeau+Office:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Global error shield for external cross-origin scripts -->
+    <script type="text/javascript">
+      window.addEventListener('error', function(e) {
+        if (!e) return;
+        if (e.message === 'Script error.' || !e.message || (e.filename && e.filename.indexOf('translate.google') !== -1)) {
+          if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+          if (typeof e.preventDefault === 'function') e.preventDefault();
+          return true;
+        }
+      }, true);
+      window.addEventListener('unhandledrejection', function(e) {
+        if (e && e.reason) {
+          var str = String(e.reason && e.reason.message ? e.reason.message : e.reason);
+          if (str.indexOf('Script error') !== -1) {
+            if (typeof e.preventDefault === 'function') e.preventDefault();
+          }
+        }
+      });
+      window.onerror = function(msg, url) {
+        if (msg === 'Script error.' || (url && url.indexOf('translate.google') !== -1)) {
+          return true;
+        }
+        return false;
+      };
+    </script>
   </head>
   <body class="bg-[#faf7f2] text-stone-800 antialiased selection:bg-amber-200 selection:text-stone-900 overflow-x-hidden">
     <div id="google_translate_element" style="display: none;"></div>
 
     <script type="text/javascript">
-      // International Youth Festival 2026: Default language is English (en)
+      function getInitialAudienceMode() {
+        try {
+          var params = new URLSearchParams(window.location.search);
+          var m = params.get('mode') || params.get('audience');
+          if (m === 'citizen' || m === 'rf') return 'citizen';
+          if (m === 'international' || m === 'world') return 'international';
+          var saved = localStorage.getItem('mfm_audience_mode');
+          if (saved) return saved;
+        } catch(e) {}
+        var isRu = typeof navigator !== 'undefined' && navigator.language && navigator.language.toLowerCase().indexOf('ru') === 0;
+        return isRu ? 'citizen' : 'international';
+      }
+
       function ensureTargetCookie(targetLang) {
         if (targetLang === 'ru') {
           var domain = window.location.hostname;
@@ -41,15 +79,15 @@
         }
       }
 
-      var initialTargetLang = 'en';
+      var initialTargetLang = 'ru';
       try {
+        var mode = getInitialAudienceMode();
         var isExplicit = localStorage.getItem('mfm_explicit_choice') === 'true';
         var saved = localStorage.getItem('mfm_lang');
         if (isExplicit && saved) {
           initialTargetLang = saved;
         } else {
-          initialTargetLang = 'en';
-          localStorage.setItem('mfm_lang', 'en');
+          initialTargetLang = (mode === 'citizen') ? 'ru' : 'en';
         }
         ensureTargetCookie(initialTargetLang);
       } catch (e) {}
@@ -58,7 +96,8 @@
         try {
           var isExplicit = localStorage.getItem('mfm_explicit_choice') === 'true';
           var saved = localStorage.getItem('mfm_lang');
-          var targetLang = (isExplicit && saved) ? saved : 'en';
+          var mode = getInitialAudienceMode();
+          var targetLang = (isExplicit && saved) ? saved : (mode === 'citizen' ? 'ru' : 'en');
           if (targetLang === 'ru') return;
 
           var attempts = 0;
@@ -74,10 +113,10 @@
               combo.dispatchEvent(new Event('input', { bubbles: true }));
               clearInterval(interval);
             }
-            if (attempts > 100) {
+            if (attempts > 80) {
               clearInterval(interval);
             }
-          }, 40);
+          }, 50);
         } catch(e) {}
       }
 
@@ -93,10 +132,17 @@
         } catch(e) {}
       };
 
-      document.addEventListener('DOMContentLoaded', triggerTargetLanguage);
-      window.addEventListener('load', triggerTargetLanguage);
+      // Load Google Translate script only when language is not Russian
+      if (initialTargetLang !== 'ru') {
+        var gtScript = document.createElement('script');
+        gtScript.type = 'text/javascript';
+        gtScript.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+        gtScript.async = true;
+        gtScript.defer = true;
+        gtScript.onerror = function() { /* fail silently */ };
+        document.head.appendChild(gtScript);
+      }
     </script>
-    <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async defer onerror="this.onerror=null;"></script>
 
     <!-- Background Musicbox Audio Element -->
     <audio id="bgm-musicbox" loop playsinline preload="auto">

@@ -80,14 +80,15 @@ export function HeaderNavbar({ onOpenMailbox, stampsCount, totalStamps }: Header
 
         {/* Right action buttons: language, stamps, sound, mailbox, and menu for tablet/mobile */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          {/* Audience Mode Toggle (Hidden on mobile per Photo 3 request; visible on >= sm) */}
+          {/* Audience Mode Toggle (Visible on >= sm) */}
           <button
             type="button"
+            id="btn-header-mode-toggle"
             onClick={toggleMode}
             className="hidden sm:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 h-8.5 sm:h-9 rounded-full bg-stone-100 hover:bg-amber-100/70 border border-stone-300/80 text-xs font-semibold text-stone-700 hover:text-stone-900 transition-colors shrink-0 cursor-pointer"
-            title={mode === 'citizen' ? 'Выбран режим: Гражданин РФ (нажмите, чтобы сменить на иностранного гостя)' : 'Mode: International (click to switch to citizen)'}
+            title={mode === 'citizen' ? 'Выбран режим: Россия (РФ). Нажмите для переключения на International' : 'Mode: International. Click to switch to Russia'}
           >
-            <span>{mode === 'citizen' ? '🇷🇺 РФ' : '🌍 World'}</span>
+            <span>{mode === 'citizen' ? '🇷🇺 Россия (РФ)' : '🌍 International'}</span>
           </button>
 
           {/* Language Selector */}
@@ -202,6 +203,23 @@ export function HeaderNavbar({ onOpenMailbox, stampsCount, totalStamps }: Header
               <Heart className="w-4 h-4 fill-rose-500 text-rose-500 shrink-0" />
               <span>Опрос & Книга</span>
             </a>
+
+            {/* Mobile audience mode switcher */}
+            <div className="pt-2 mt-1 border-t border-stone-200/70 sm:hidden">
+              <button
+                type="button"
+                onClick={() => {
+                  toggleMode();
+                  setIsMobileMenuOpen(false);
+                }}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold bg-stone-100 text-stone-800 hover:bg-stone-200 transition-colors"
+              >
+                <span>Режим / Mode:</span>
+                <span className="font-bold text-amber-900">
+                  {mode === 'citizen' ? '🇷🇺 Россия (РФ)' : '🌍 International'}
+                </span>
+              </button>
+            </div>
 
             {/* Mobile quick actions: stamps & mailbox */}
             <div className="pt-2 mt-1 border-t border-stone-200/70 flex items-center justify-between text-xs text-stone-600 px-2 sm:hidden">

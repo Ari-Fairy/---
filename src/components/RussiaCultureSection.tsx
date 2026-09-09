@@ -583,6 +583,19 @@ export function RussiaCultureSection({ onUnlockStamp }: RussiaCultureSectionProp
                 </div>
               </motion.div>
             </div>
+
+            {/* International Feature 4: Interactive Festive Puzzle Game (после просторов России) */}
+            <div id="puzzle-section" className="scroll-mt-20">
+              <MatryoshkaPuzzleGame
+                onComplete={() => {
+                  try {
+                    localStorage.setItem('mfm_puzzle_solved', 'true');
+                  } catch {}
+                  onUnlockStamp('stamp-mosaic');
+                  onUnlockStamp('stamp-matryoshka');
+                }}
+              />
+            </div>
           </>
         )}
 
