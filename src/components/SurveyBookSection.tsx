@@ -772,7 +772,9 @@ export function SurveyBookSection({ quizScore, onUnlockStamp }: SurveyBookSectio
                 </span>
               </button>
               <p className="mt-2 text-[11px] text-stone-500 font-sans-ui">
-                Ответ сохранится на сервере сувенира и подготовит отправку на почту arinast101@gmail.com
+                {mode === 'foreign'
+                  ? 'The response will be saved on the souvenir server and prepared for sending to the author’s email'
+                  : 'Ответ сохранится на сервере сувенира и подготовит отправку на почту автора'}
               </p>
             </div>
 

@@ -1,6 +1,6 @@
-import { useState, MouseEvent } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Stamp, Sparkles, RefreshCw, Send, CheckCircle, Gift, Heart, Code2, Globe2, Flag, Share2 } from 'lucide-react';
+import { Stamp, Sparkles, RefreshCw, Send, CheckCircle, Gift, Heart, Code2, Globe2, Flag } from 'lucide-react';
 import { PostcardStamp } from '../types';
 import { useAudience } from '../context/AudienceContext';
 import { ARINA_PROFILE } from '../data/arinaProfile';
@@ -16,7 +16,7 @@ interface PostcardEnvelopeProps {
 }
 
 export function PostcardEnvelope({ stamps, onUnlockStamp }: PostcardEnvelopeProps) {
-  const { mode, setMode, getShareUrl } = useAudience();
+  const { mode, setMode } = useAudience();
   // Remember envelope open/closed state so switching audience or reloading preserves the user's choice
   const [isOpen, setIsOpen] = useState<boolean>(() => {
     try {
@@ -27,47 +27,11 @@ export function PostcardEnvelope({ stamps, onUnlockStamp }: PostcardEnvelopeProp
   });
   const [isFlipped, setIsFlipped] = useState(false);
   const [selectedStampId, setSelectedStampId] = useState<string | null>(null);
-  const [isShareCopied, setIsShareCopied] = useState(false);
 
   const handleSwitchAudience = (targetMode: 'international' | 'citizen') => {
     setMode(targetMode);
     // Do NOT reset isOpen here — keep the envelope open if user opened it, or closed if closed
     setIsFlipped(false);
-  };
-
-  const handleSharePostcard = async (e: MouseEvent) => {
-    e.stopPropagation();
-    const shareUrl = getShareUrl ? getShareUrl(mode) : window.location.href;
-    const isInternational = mode === 'international';
-    const shareTitle = isInternational
-      ? 'Interactive Souvenir Postcard • WYF 2026 Russia from Arina'
-      : 'Интерактивная открытка-сувенир МФМ 2026 от Арины';
-    const shareText = isInternational
-      ? 'Hello! Here is a memorable digital souvenir postcard from WYF 2026 in Russia created by Arina:'
-      : 'Привет! Лови памятную открытку-сувенир с МФМ 2026 от Арины:';
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: shareTitle,
-          text: shareText,
-          url: shareUrl,
-        });
-        return;
-      } catch (err) {
-        // User cancelled share dialog or not supported, proceed to clipboard
-      }
-    }
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(shareUrl);
-      setIsShareCopied(true);
-      confetti({
-        particleCount: 35,
-        spread: 50,
-        origin: { y: 0.6 },
-      });
-      setTimeout(() => setIsShareCopied(false), 2500);
-    }
   };
 
   const PHOTO_DATA = {
@@ -483,24 +447,6 @@ export function PostcardEnvelope({ stamps, onUnlockStamp }: PostcardEnvelopeProp
                       <span>{mode === 'international' ? 'Interactive souvenir active' : 'Интерактивный сувенир активен'}</span>
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <button
-                        type="button"
-                        id="btn-share-postcard-bar"
-                        onClick={handleSharePostcard}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200/90 text-amber-950 font-semibold text-xs transition-all cursor-pointer border border-amber-300 shadow-2xs"
-                        title={mode === 'international' ? 'Share postcard link' : 'Поделиться ссылкой на открытку'}
-                      >
-                        {isShareCopied ? (
-                          <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                        ) : (
-                          <Share2 className="w-3.5 h-3.5 text-amber-800" />
-                        )}
-                        <span>
-                          {mode === 'international'
-                            ? (isShareCopied ? 'Link copied!' : 'Share postcard')
-                            : (isShareCopied ? 'Ссылка скопирована!' : 'Поделиться открыткой')}
-                        </span>
-                      </button>
                       <a href="#russia" className="text-amber-800 font-semibold hover:underline flex items-center gap-1">
                         {mode === 'international' ? 'Explore Russia →' : 'Исследовать Россию →'}
                       </a>

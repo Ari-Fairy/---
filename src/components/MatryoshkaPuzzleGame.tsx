@@ -35,8 +35,7 @@ const PRESET_IMAGES: PresetImage[] = [
   // Праздники России
   { id: 'maslenitsa', name: 'Праздник Масленица', category: 'holidays', url: '/images/festival_maslenitsa.jpg' },
   { id: 'ivan_kupala', name: 'Праздник Иван Купала', category: 'holidays', url: '/images/festival_ivan_kupala.jpg' },
-  { id: 'krasnaya_gorka', name: 'Красная Горка (Хоровод)', category: 'holidays', url: '/images/festival_krasnaya_gorka.jpg' },
-  { id: 'krasnaya_gorka_2', name: 'Красная Горка (Весенний праздник)', category: 'holidays', url: '/images/festival_krasnaya_gorka_2.jpg' },
+  { id: 'krasnaya_gorka', name: 'Красная Горка', category: 'holidays', url: '/images/festival_krasnaya_gorka.jpg' },
   { id: 'yablochny_spas', name: 'Яблочный Спас (Сбор урожая)', category: 'holidays', url: '/images/festival_yablochny_spas.jpg' },
   // Природа и уголки России
   { id: 'baikal', name: 'Озеро Байкал', category: 'nature', url: 'https://images.unsplash.com/photo-1551845041-63e8e76836ea?auto=format&fit=crop&w=1000&q=80' },
