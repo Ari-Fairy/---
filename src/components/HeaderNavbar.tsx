@@ -1,5 +1,5 @@
 import React, { useState, useEffect, MouseEvent } from 'react';
-import { Volume2, VolumeX, Mail, Sparkles, Compass, Heart, Menu, X, Globe2, Flag } from 'lucide-react';
+import { Volume2, VolumeX, Mail, Sparkles, Compass, Heart, Menu, X, Globe2, Flag, QrCode } from 'lucide-react';
 import {
   toggleAmbientBgm,
   startAmbientBgm,
@@ -12,11 +12,12 @@ import { useAudience } from '../context/AudienceContext';
 
 interface HeaderNavbarProps {
   onOpenMailbox: () => void;
+  onOpenQr?: () => void;
   stampsCount: number;
   totalStamps: number;
 }
 
-export function HeaderNavbar({ onOpenMailbox, stampsCount, totalStamps }: HeaderNavbarProps) {
+export function HeaderNavbar({ onOpenMailbox, onOpenQr, stampsCount, totalStamps }: HeaderNavbarProps) {
   const { mode, toggleMode } = useAudience();
   const [isPlaying, setIsPlaying] = useState(() => getIsBgmPlaying());
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -137,6 +138,18 @@ export function HeaderNavbar({ onOpenMailbox, stampsCount, totalStamps }: Header
             <span className="hidden sm:inline">Почта Арины</span>
           </button>
 
+          {/* QR Code trigger for visitors to scan on mobile phones */}
+          <button
+            type="button"
+            id="btn-open-qr"
+            onClick={onOpenQr}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 h-8.5 sm:h-9 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-sm hover:shadow transition-all shrink-0 cursor-pointer"
+            title="Открыть QR-код сайта для сканирования смартфоном"
+          >
+            <QrCode className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white shrink-0" />
+            <span className="hidden md:inline">QR-код</span>
+          </button>
+
           {/* Hamburger Menu Toggle (strictly for portrait tablets and mobile phones < xl) */}
           <button
             id="btn-mobile-nav"
@@ -203,6 +216,20 @@ export function HeaderNavbar({ onOpenMailbox, stampsCount, totalStamps }: Header
               <Heart className="w-4 h-4 fill-rose-500 text-rose-500 shrink-0" />
               <span>Опрос & Книга</span>
             </a>
+
+            {/* Mobile QR Code button */}
+            <button
+              type="button"
+              id="btn-mobile-open-qr"
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                onOpenQr?.();
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-amber-950 bg-amber-100/80 hover:bg-amber-200 transition-colors cursor-pointer text-left"
+            >
+              <QrCode className="w-4 h-4 text-amber-800 shrink-0" />
+              <span>QR-код сайта (для смартфона)</span>
+            </button>
 
             {/* Mobile audience mode switcher */}
             <div className="pt-2 mt-1 border-t border-stone-200/70 sm:hidden">

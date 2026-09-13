@@ -12,6 +12,7 @@ import { AboutArinaSection } from './components/AboutArinaSection';
 import { QuizSection } from './components/QuizSection';
 import { SurveyBookSection } from './components/SurveyBookSection';
 import { ArinaMailboxModal } from './components/ArinaMailboxModal';
+import { QrCodeModal } from './components/QrCodeModal';
 import { Footer } from './components/Footer';
 import { INTERNATIONAL_STAMPS, CITIZEN_STAMPS } from './data/russiaFacts';
 import { PostcardStamp } from './types';
@@ -81,6 +82,7 @@ export default function App() {
 
   const [quizScore, setQuizScore] = useState<number | null>(null);
   const [isMailboxOpen, setIsMailboxOpen] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
   // Derive stamps list based on audience mode
   const currentStampsTemplate = mode === 'citizen' ? CITIZEN_STAMPS : INTERNATIONAL_STAMPS;
@@ -130,6 +132,7 @@ export default function App() {
       {/* Top Navbar */}
       <HeaderNavbar
         onOpenMailbox={() => setIsMailboxOpen(true)}
+        onOpenQr={() => setIsQrModalOpen(true)}
         stampsCount={unlockedCount}
         totalStamps={stamps.length}
       />
@@ -169,12 +172,18 @@ export default function App() {
       </main>
 
       {/* Footer & Festival Exchange Link */}
-      <Footer />
+      <Footer onOpenQr={() => setIsQrModalOpen(true)} />
 
       {/* Arina's Mailbox Drawer / Modal */}
       <ArinaMailboxModal
         isOpen={isMailboxOpen}
         onClose={() => setIsMailboxOpen(false)}
+      />
+
+      {/* QR Code Modal for Mobile Scanning & Printing */}
+      <QrCodeModal
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
       />
 
     </div>
