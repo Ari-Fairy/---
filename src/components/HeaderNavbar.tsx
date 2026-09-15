@@ -40,18 +40,18 @@ export function HeaderNavbar({ onOpenMailbox, onOpenQr, stampsCount, totalStamps
   };
 
   return (
-    <header className="sticky top-0 z-40 backdrop-blur-md bg-[#faf7f2]/95 border-b border-stone-200/80 transition-all shadow-xs">
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4">
+    <header className="sticky top-0 z-40 backdrop-blur-md bg-[#faf7f2]/95 border-b border-stone-200/80 transition-all shadow-xs w-full">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-4 lg:px-6 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-4">
         
         {/* Left: Brand / Festival Badge */}
-        <div className="flex items-center gap-2 shrink-0">
-          <a href="#postcard" className="flex items-center gap-2 group shrink-0">
-            <div className="w-8.5 h-8.5 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-amber-600 via-rose-600 to-red-600 flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <a href="#postcard" className="flex items-center gap-1.5 sm:gap-2 group shrink-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-amber-600 via-rose-600 to-red-600 flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform shrink-0">
               <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-serif-display font-bold text-base sm:text-lg text-stone-900 tracking-wide whitespace-nowrap">
+                <span className="font-serif-display font-bold text-sm sm:text-lg text-stone-900 tracking-wide whitespace-nowrap">
                   МФМ 2026
                 </span>
                 {/* 'Сувенир' hidden on mobile phones to preserve clean spacing */}
@@ -113,7 +113,7 @@ export function HeaderNavbar({ onOpenMailbox, onOpenQr, stampsCount, totalStamps
             id="btn-toggle-sound"
             onClick={handleToggleSound}
             aria-label={isPlaying ? 'Выключить музыку' : 'Включить атмосферную музыку'}
-            className={`w-8.5 h-8.5 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl border transition-all shrink-0 cursor-pointer ${
+            className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl border transition-all shrink-0 cursor-pointer ${
               isPlaying
                 ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-inner'
                 : 'bg-stone-100 text-stone-600 border-stone-200 hover:bg-stone-200'
@@ -131,30 +131,30 @@ export function HeaderNavbar({ onOpenMailbox, onOpenQr, stampsCount, totalStamps
           <button
             id="btn-open-mailbox"
             onClick={onOpenMailbox}
-            className="w-8.5 h-8.5 sm:w-auto sm:h-9 sm:px-3 sm:py-1.5 flex items-center justify-center gap-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold shadow-sm hover:shadow transition-all shrink-0 cursor-pointer"
+            className="w-8 h-8 sm:w-auto sm:h-9 sm:px-3 sm:py-1.5 flex items-center justify-center gap-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold shadow-sm hover:shadow transition-all shrink-0 cursor-pointer"
             title="Просмотреть полученные отзывы и рекомендации книг"
           >
             <Mail className="w-3.5 h-3.5 text-amber-300 shrink-0" />
             <span className="hidden sm:inline">Почта Арины</span>
           </button>
 
-          {/* QR Code trigger for visitors to scan on mobile phones */}
+          {/* QR Code trigger for visitors to scan on tablet & desktop (on phones, it is in the mobile menu) */}
           <button
             type="button"
             id="btn-open-qr"
             onClick={onOpenQr}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 h-8.5 sm:h-9 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-sm hover:shadow transition-all shrink-0 cursor-pointer"
+            className="hidden md:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 h-8.5 sm:h-9 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-sm hover:shadow transition-all shrink-0 cursor-pointer"
             title="Открыть QR-код сайта для сканирования смартфоном"
           >
             <QrCode className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white shrink-0" />
-            <span className="hidden md:inline">QR-код</span>
+            <span>QR-код</span>
           </button>
 
           {/* Hamburger Menu Toggle (strictly for portrait tablets and mobile phones < xl) */}
           <button
             id="btn-mobile-nav"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="flex xl:hidden w-8.5 h-8.5 sm:w-9 sm:h-9 items-center justify-center rounded-xl border border-stone-300/80 bg-white/95 hover:bg-stone-100 text-stone-700 transition-all cursor-pointer shrink-0"
+            className="flex xl:hidden w-8 h-8 sm:w-9 sm:h-9 items-center justify-center rounded-xl border border-stone-300/80 bg-white/95 hover:bg-stone-100 text-stone-700 transition-all cursor-pointer shrink-0"
             aria-label={isMobileMenuOpen ? 'Закрыть меню' : 'Открыть меню навигации'}
             title="Меню навигации"
           >

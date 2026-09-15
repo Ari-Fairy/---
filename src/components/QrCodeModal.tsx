@@ -36,12 +36,12 @@ export function QrCodeModal({ isOpen, onClose }: QrCodeModalProps) {
   // Compute final URL for QR Code
   const getBaseOrigin = () => {
     if (typeof window === 'undefined') return PUBLIC_SHARED_BASE_URL;
-    // If running in dev environment or iframe, prioritize the public share URL
-    // so participants scanning from smartphones can view without permission walls.
-    if (useSharedLink) {
-      return PUBLIC_SHARED_BASE_URL;
+    const origin = window.location.origin;
+    // If the site is opened on Vercel or any custom public domain, prioritize it!
+    if (origin && !origin.includes('localhost') && !origin.includes('ais-dev-')) {
+      return origin;
     }
-    return window.location.origin;
+    return PUBLIC_SHARED_BASE_URL;
   };
 
   const qrUrl = `${getBaseOrigin()}/?mode=${targetAudience}`;

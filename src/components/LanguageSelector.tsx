@@ -93,11 +93,11 @@ export function LanguageSelector() {
           setIsOpen(!isOpen);
         }}
         aria-label="Select language / Выбрать язык"
-        className="flex items-center gap-1.5 px-2.5 sm:px-3 h-8.5 sm:h-9 rounded-xl border border-stone-300/80 bg-white/95 hover:bg-stone-50 text-stone-800 text-xs font-semibold shadow-2xs hover:border-amber-400 transition-all cursor-pointer shrink-0"
+        className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 h-8 sm:h-9 rounded-xl border border-stone-300/80 bg-white/95 hover:bg-stone-50 text-stone-800 text-xs font-semibold shadow-2xs hover:border-amber-400 transition-all cursor-pointer shrink-0"
         title={mode === 'international' ? 'Language: English (click to change)' : 'Язык: Русский (нажмите для смены)'}
       >
-        <Globe className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-        <span className="text-base leading-none shrink-0" role="img" aria-label={currentLang.name}>
+        <Globe className="w-3.5 h-3.5 text-amber-700 shrink-0 hidden xs:block" />
+        <span className="text-sm sm:text-base leading-none shrink-0" role="img" aria-label={currentLang.name}>
           {currentLang.flag}
         </span>
         <span className="font-bold text-stone-900 font-mono text-xs uppercase shrink-0">

@@ -127,7 +127,7 @@ export default function App() {
   const unlockedCount = stamps.filter((s) => s.unlocked).length;
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#faf7f2] text-stone-800 font-sans-ui selection:bg-amber-200 selection:text-stone-900">
+    <div className="min-h-screen flex flex-col bg-[#faf7f2] text-stone-800 font-sans-ui selection:bg-amber-200 selection:text-stone-900 w-full overflow-x-hidden">
       
       {/* Top Navbar */}
       <HeaderNavbar
